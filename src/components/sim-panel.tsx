@@ -33,6 +33,7 @@ export function SimPanel({
   sceneId,
   onScene,
   onKeep,
+  onResetView,
 }: {
   params: SimParams;
   onChange: (next: SimParams) => void;
@@ -41,6 +42,7 @@ export function SimPanel({
   sceneId: string;
   onScene: (id: string) => void;
   onKeep: () => void;
+  onResetView: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fine, setFine] = useState(false);
@@ -189,7 +191,7 @@ export function SimPanel({
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   <Chip
                     pressed={look.room}
-                    label="Stone corridor. Off returns the flat room, so the woods layers can show."
+                    label="A room with depth. Turn off to reveal the flat or forest background."
                     onClick={() => onLook({ ...look, room: !look.room })}
                   >
                     Room
@@ -197,7 +199,19 @@ export function SimPanel({
                   <Chip pressed={look.grain} onClick={() => onLook({ ...look, grain: !look.grain })}>
                     Grain
                   </Chip>
+                  <Chip pressed={look.dust} onClick={() => onLook({ ...look, dust: !look.dust })}>
+                    Spatial points
+                  </Chip>
                 </div>
+                {look.room ? <>
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {([["studio", "Studio"], ["stone", "Stone"], ["contours", "Wireframe"]] as const).map(([id, label]) => (
+                      <Chip key={id} pressed={look.roomStyle === id} onClick={() => onLook({ ...look, roomStyle: id })}>{label}</Chip>
+                    ))}
+                    <button type="button" onClick={onResetView} className="min-h-11 px-3 font-sans text-xs text-fg underline underline-offset-4">Reset view</button>
+                  </div>
+                  <p className="mb-4 font-sans text-xs leading-relaxed text-muted">Small points stay fixed in the room as you move. These controls change the atmosphere, not the smoke.</p>
+                </> : null}
                 {look.room ? (
                   <div className="mb-3 flex flex-col gap-2.5">
                     <Range
@@ -286,7 +300,7 @@ export function SimPanel({
                   {(
                     [
                       ["off", "Off"],
-                      ["shafts", "Shafts"],
+                      ["shafts", "Window"],
                       ["sun", "Sun"],
                     ] as const
                   ).map(([id, label]) => (

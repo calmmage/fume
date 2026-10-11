@@ -122,6 +122,13 @@ export class FumeGame {
     setWorldLook(this.world, look);
   }
 
+  resetView() {
+    this.world.look.parallaxX = 0;
+    this.world.look.parallaxY = 0;
+    this.world.look.panVx = 0;
+    this.world.look.panVy = 0;
+  }
+
   loadScene(id: string) {
     applyScene(this.world, id);
     this.emitHud();

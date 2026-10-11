@@ -1,0 +1,5 @@
+20 simulation files, smoke shading, game timing and approved ray functions preserved.
+
+> typecheck
+> tsc --noEmit
+

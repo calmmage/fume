@@ -48,8 +48,14 @@
   }
 
   html {
+    color-scheme: dark;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-muted) var(--color-surface);
   }
 
   button:not(:disabled),

@@ -3,6 +3,8 @@ export type DepthMode = "off" | "layers" | "lines" | "woods";
 export type RayMode = "off" | "shafts" | "sun";
 
 export interface LookState {
+  roomStyle: "studio" | "stone" | "contours";
+  dust: boolean;
   palette: PaletteId;
   pixel: boolean;
   grain: boolean;
@@ -30,6 +32,8 @@ export interface LookState {
 }
 
 export const DEFAULT_LOOK: LookState = {
+  roomStyle: "studio",
+  dust: true,
   palette: "ink",
   pixel: false,
   grain: true,
@@ -78,6 +82,8 @@ export function loadLook(): LookState {
       Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
     return {
       ...DEFAULT_LOOK,
+      roomStyle: parsed.roomStyle === "stone" || parsed.roomStyle === "contours" ? parsed.roomStyle : "studio",
+      dust: parsed.dust !== false,
       palette,
       pixel: Boolean(parsed.pixel),
       pixelCols: Number.isFinite(cols) ? Math.min(480, Math.max(72, Math.round(cols))) : DEFAULT_LOOK.pixelCols,

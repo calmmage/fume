@@ -9,6 +9,7 @@ import {
 } from "./fluid";
 import { interpolated, type Particle, type World } from "./sim";
 import { packGadgets } from "./tools";
+import { loadRoomMaterials } from "./materials";
 import compositeWgsl from "./wgsl/composite.wgsl";
 
 const MAX_BALLS = 18;
@@ -36,6 +37,7 @@ export class Renderer {
     private composite: Effect,
     private lut: StorageBuffer,
     private particles: StorageBuffer,
+    private materials: ReturnType<typeof loadRoomMaterials>,
   ) {}
 
   static async create(
@@ -68,7 +70,8 @@ export class Renderer {
     particles.write(new Float32Array(MAX_PT * 8) as unknown as BufferSource);
     const composite = effect(gpu, compositeWgsl, { label: "fume-composite" });
     await composite.compile({ colors: [canvasSurface.format] });
-    return new Renderer(gpu, canvasSurface, fluid, composite, lut, particles);
+    const materials = loadRoomMaterials(gpu);
+    return new Renderer(gpu, canvasSurface, fluid, composite, lut, particles, materials);
   }
 
   resize(cssW: number, cssH: number, dpr: number) {
@@ -142,12 +145,16 @@ export class Renderer {
         room_hw: world.look.roomW,
         room_hh: world.look.roomH,
         scene_z: world.look.sceneZ,
+        room_style: world.look.roomStyle === "stone" ? 1 : world.look.roomStyle === "contours" ? 2 : 0,
+        dust_on: world.look.dust ? 1 : 0,
+        material_height: this.surface.size[1],
       },
       balls: { xy_r_thick, modes0, modes1, pop_seed, smoke },
       gadgets,
       dye: this.fluid.dye.read,
       lut: this.lut,
       particles: this.particles,
+      ...this.materials.bindings,
     });
 
     frame(this.gpu, (f) => {
@@ -156,6 +163,7 @@ export class Renderer {
   }
 
   dispose() {
+    this.materials.dispose();
     destroyFluid(this.fluid);
     this.gpu.dispose();
   }

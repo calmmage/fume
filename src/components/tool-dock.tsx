@@ -68,9 +68,9 @@ export function ToolDock({
         {active.label}
         <span className="text-muted"> · {followHint}</span>
       </p>
-      <div className="pointer-events-auto flex max-w-full items-center gap-2 overflow-x-auto overscroll-contain rounded-pill border border-border bg-surface/80 p-1.5 backdrop-blur-sm">
+      <div className="pointer-events-auto flex max-w-full flex-wrap justify-center items-center gap-1 rounded-2xl border border-border bg-surface/80 p-1.5 backdrop-blur-sm sm:flex-nowrap sm:gap-2 sm:rounded-pill">
         {held ? null : (
-          <div className="flex shrink-0 rounded-pill bg-bg/40 p-0.5">
+          <div className="flex w-full justify-center shrink-0 rounded-pill bg-bg/40 p-0.5 sm:w-auto">
             <ModeBtn
               label="Follow pointer"
               active={!placeMode}
@@ -88,7 +88,7 @@ export function ToolDock({
           </div>
         )}
         {held ? null : <span className="hidden h-6 w-px shrink-0 bg-border sm:block" />}
-        <div className="flex items-center gap-0.5">
+        <div className="contents sm:flex sm:items-center sm:gap-0.5">
           {TOOLS.map((item) => {
             const Icon = ICONS[item.id];
             const selected = item.id === tool;

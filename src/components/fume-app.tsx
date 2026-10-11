@@ -185,6 +185,7 @@ export function FumeApp() {
         sceneId={sceneId}
         onScene={onScene}
         onKeep={onKeep}
+        onResetView={() => gameRef.current?.resetView()}
       />
     </main>
   );
@@ -194,24 +195,17 @@ function TitleScreen({ onBegin }: { onBegin: () => void }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pb-36">
       <div className="flex max-w-lg flex-col items-center text-center">
-        <p
-          className="fume-rise font-sans text-xs tracking-[0.28em] text-muted uppercase"
-          style={{ animation: "fume-rise 500ms var(--ease-out) both" }}
-        >
-          soap lab
-        </p>
         <h1
-          className="fume-rise mt-3 font-display text-3xl leading-tight tracking-tight text-fg italic"
+          className="fume-rise font-display text-[clamp(3.5rem,9vw,6rem)] leading-none font-normal tracking-[0.16em] text-fg"
           style={{ animation: "fume-rise 500ms var(--ease-out) 60ms both" }}
         >
-          Fume
+          FUME
         </h1>
         <p
-          className="fume-rise mt-5 max-w-sm font-sans text-sm leading-normal text-muted"
+          className="fume-rise mt-4 font-display text-lg tracking-[0.16em] text-fg/80"
           style={{ animation: "fume-rise 500ms var(--ease-out) 110ms both" }}
         >
-          Circles of smoke. Pop one and the smoke comes out. Drag a fan to aim it,
-          draw a block, and let the plume slide around it.
+          blow · drift · pop
         </p>
         <button
           type="button"
