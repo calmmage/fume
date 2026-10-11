@@ -1,9 +1,190 @@
-20 simulation files, smoke shading, game timing and approved ray functions preserved.
+TAP version 13
+# Subtest: first render is identical with server defaults and persisted browser settings
+ok 1 - first render is identical with server defaults and persisted browser settings
+  ---
+  duration_ms: 65.581708
+  type: 'test'
+  ...
+# Subtest: fresh and returning old-style users start with black Geometry and no grain
+ok 2 - fresh and returning old-style users start with black Geometry and no grain
+  ---
+  duration_ms: 1.800166
+  type: 'test'
+  ...
+# Subtest: each new style persists without saving camera momentum or changing smoke settings
+ok 3 - each new style persists without saving camera momentum or changing smoke settings
+  ---
+  duration_ms: 0.707291
+  type: 'test'
+  ...
+# Subtest: corrupt and obsolete new-style preferences recover to valid defaults
+ok 4 - corrupt and obsolete new-style preferences recover to valid defaults
+  ---
+  duration_ms: 0.320375
+  type: 'test'
+  ...
+# Subtest: partial style preferences keep default light while an explicit Off remains Off
+ok 5 - partial style preferences keep default light while an explicit Off remains Off
+  ---
+  duration_ms: 0.518
+  type: 'test'
+  ...
+# Subtest: Geometry stays network-free and failed environment maps retry with bounded requests
+ok 6 - Geometry stays network-free and failed environment maps retry with bounded requests
+  ---
+  duration_ms: 18.61975
+  type: 'test'
+  ...
+# Subtest: reselecting a style retries a failed map immediately
+ok 7 - reselecting a style retries a failed map immediately
+  ---
+  duration_ms: 7.317041
+  type: 'test'
+  ...
+# Subtest: persistent failure backs off, and old style results cannot overwrite the selected style
+ok 8 - persistent failure backs off, and old style results cannot overwrite the selected style
+  ---
+  duration_ms: 4.87525
+  type: 'test'
+  ...
+# Subtest: empty scene starts with only an active held Candle, no placed tools or bubbles
+ok 9 - empty scene starts with only an active held Candle, no placed tools or bubbles
+  ---
+  duration_ms: 1.183792
+  type: 'test'
+  ...
+# Subtest: Shelf and the other saved layouts remain available after an empty start
+ok 10 - Shelf and the other saved layouts remain available after an empty start
+  ---
+  duration_ms: 0.682958
+  type: 'test'
+  ...
+# Subtest: Empty stays empty before Begin even when the former demo random condition would trigger
+ok 11 - Empty stays empty before Begin even when the former demo random condition would trigger
+  ---
+  duration_ms: 1.225416
+  type: 'test'
+  ...
+# Subtest: held-effect toggle never changes placed tools or the activity of new copies
+ok 12 - held-effect toggle never changes placed tools or the activity of new copies
+  ---
+  duration_ms: 0.195458
+  type: 'test'
+  ...
+# Subtest: primary gadget clicks always place, including over a placed tool or a bubble
+ok 13 - primary gadget clicks always place, including over a placed tool or a bubble
+  ---
+  duration_ms: 4.844333
+  type: 'test'
+  ...
+# Subtest: Hand moves an existing tool and pans empty space without spawning
+ok 14 - Hand moves an existing tool and pans empty space without spawning
+  ---
+  duration_ms: 0.974166
+  type: 'test'
+  ...
+# Subtest: every image background maps the pointer through the same bounded pan offset as the image
+ok 15 - every image background maps the pointer through the same bounded pan offset as the image
+  ---
+  duration_ms: 6.15975
+  type: 'test'
+  ...
+# Subtest: image-view corners stay inside the smoke field even at extreme pan and aspect ratios
+ok 16 - image-view corners stay inside the smoke field even at extreme pan and aspect ratios
+  ---
+  duration_ms: 1.724916
+  type: 'test'
+  ...
+# Subtest: Wand still blows on hold, releases on lift, and pops on a circle click
+ok 17 - Wand still blows on hold, releases on lift, and pops on a circle click
+  ---
+  duration_ms: 4.311458
+  type: 'test'
+  ...
+# Subtest: Block still draws to size, and a new fan can be aimed and resized
+ok 18 - Block still draws to size, and a new fan can be aimed and resized
+  ---
+  duration_ms: 0.986417
+  type: 'test'
+  ...
+# Subtest: unmodified trackpad scrolling pans both axes for every tool without changing zoom or gadgets
+ok 19 - unmodified trackpad scrolling pans both axes for every tool without changing zoom or gadgets
+  ---
+  duration_ms: 1.19125
+  type: 'test'
+  ...
+# Subtest: wheel line/page units are normalized and Ctrl pinch stays native
+ok 20 - wheel line/page units are normalized and Ctrl pinch stays native
+  ---
+  duration_ms: 3.211208
+  type: 'test'
+  ...
+# Subtest: scrolling the camera never re-aims a held fan on the next simulation step
+ok 21 - scrolling the camera never re-aims a held fan on the next simulation step
+  ---
+  duration_ms: 0.54075
+  type: 'test'
+  ...
+# Subtest: modifier scrolling deliberately adjusts Block, Vortex, and fan without panning
+ok 22 - modifier scrolling deliberately adjusts Block, Vortex, and fan without panning
+  ---
+  duration_ms: 1.0055
+  type: 'test'
+  ...
+# Subtest: right click deletes a placed device and clearing keeps the held tool
+ok 23 - right click deletes a placed device and clearing keeps the held tool
+  ---
+  duration_ms: 0.51125
+  type: 'test'
+  ...
+# Subtest: Space preserves focused UI activation and still blows from the room
+ok 24 - Space preserves focused UI activation and still blows from the room
+  ---
+  duration_ms: 0.390541
+  type: 'test'
+  ...
+# Subtest: losing focus ends a tool drag before the next hover movement
+ok 25 - losing focus ends a tool drag before the next hover movement
+  ---
+  duration_ms: 0.230292
+  type: 'test'
+  ...
+# Subtest: a canceled Hand touch never commits a bubble pop
+ok 26 - a canceled Hand touch never commits a bubble pop
+  ---
+  duration_ms: 0.262833
+  type: 'test'
+  ...
+# Subtest: the focused Blow button supports keyboard hold, release, and focus loss
+ok 27 - the focused Blow button supports keyboard hold, release, and focus loss
+  ---
+  duration_ms: 10.987458
+  type: 'test'
+  ...
+# Subtest: dock exposes one held-effect switch, with no Follow/Pin placement modes
+ok 28 - dock exposes one held-effect switch, with no Follow/Pin placement modes
+  ---
+  duration_ms: 23.53725
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1476.033333
+19 complete simulation files plus sim.ts outside explicit tool/empty-start/image-pointer changes, smoke shading, game timing and approved ray functions preserved.
 
 > typecheck
 > tsc --noEmit
 
-
-Production build: PASS (client, server, Nitro). DATABASE_URL absent; migrations skipped by the project.
-Final browser: no shader/JavaScript warnings or errors observed.
-Code snapshot: 0be1cb4.
+Scoped ESLint: PASS (0 errors, 0 warnings).
+Browser: all five styles rendered; 390x844 picker had 5 loaded images; Wood and Cosmos survived reload; no new shader/JS errors after 19:39:25 UTC.
+Browser: click placement, independent held toggle, plain scrolling, Wand hold, edge candle emission, Reset view, and Light Off/Window state changes verified.
+Independent numerical framing sweep: 4,608 raw coordinates stayed within [.001,.999].
+Physical trackpad feel and frame-rate benchmark: not measured.
+Production build: PASS; database migration explicitly skipped because DATABASE_URL is unset.
+Code revision: 1d111d8. Walkthrough verified: 13/13 images loaded, no horizontal overflow at 1280px.
