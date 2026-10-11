@@ -18,7 +18,7 @@ import {
   rotateGadget,
   scaleGadget,
   stretchGadget,
-  setPlaceMode,
+  setHeldToolActive,
   setTool,
   setWorldParams,
   setWorldLook,
@@ -47,7 +47,7 @@ export interface HudSnapshot {
   height: number;
   glError: string | null;
   tool: ToolKind;
-  placeMode: boolean;
+  heldToolActive: boolean;
   gadgetCount: number;
 }
 
@@ -161,8 +161,8 @@ export class FumeGame {
     this.emitHud();
   }
 
-  setPlaceMode(place: boolean) {
-    setPlaceMode(this.world, place);
+  setHeldToolActive(active: boolean) {
+    setHeldToolActive(this.world, active);
     this.emitHud();
   }
 
@@ -271,23 +271,23 @@ export class FumeGame {
     const p = screenToWorld(this.world, s.x, s.y);
     const right = e.button === 2 || e.ctrlKey || e.metaKey;
     const gadget = pickGadget(this.world, p.x, p.y);
-    if (gadget && (right || this.world.tool !== "hand")) {
-      if (right) {
+    if (right) {
+      if (gadget) {
         removeGadget(this.world, gadget);
         this.emitHud();
-        return;
-      }
-      this.world.dragId = gadget.id;
-      beginGadgetDrag(this.world, gadget, p.x, p.y, "move");
-      try {
-        this.canvas.setPointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
       }
       return;
     }
-    if (right) return;
     if (this.world.tool === "hand") {
+      if (gadget) {
+        beginGadgetDrag(this.world, gadget, p.x, p.y, "move");
+        try {
+          this.canvas.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
       this.panning = true;
       this.handTap = true;
       this.tapX = s.x;
@@ -304,7 +304,7 @@ export class FumeGame {
       }
       return;
     }
-    if (this.world.placeMode && this.world.tool !== "wand") {
+    if (this.world.tool !== "wand") {
       const g = placeGadgetAt(this.world, p.x, p.y);
       if (g) {
         const mode = g.kind === "block" ? "draw" : g.kind === "fan" || g.kind === "smoke" ? "aim" : "move";
@@ -375,44 +375,66 @@ export class FumeGame {
     if (this.world.dragId != null) endGadgetDrag(this.world);
   };
 
+  private onPointerCancel = (e: PointerEvent) => {
+    this.handTap = false;
+    this.onPointerUp(e);
+  };
+
   private onWheel = (e: WheelEvent) => {
+    // Browsers send Ctrl-wheel for trackpad pinch; leave native zoom alone.
+    if (e.ctrlKey || e.metaKey) return;
     e.preventDefault();
+    const unit = e.deltaMode === 1 ? 16 : 1;
+    const dx = e.deltaX * (e.deltaMode === 2 ? this.world.w : unit);
+    const dy = e.deltaY * (e.deltaMode === 2 ? this.world.h : unit);
+    if (!e.altKey && !e.shiftKey) {
+      panRoom(this.world, -dx, -dy, 1 / 60);
+      // Trackpads supply their own momentum through wheel events. Adding room
+      // inertia again would make the room drift after the gesture has stopped.
+      this.world.look.panVx = 0;
+      this.world.look.panVy = 0;
+      // Keep the held preview under the pointer without interpreting camera
+      // movement as an aiming gesture on the next simulation step.
+      if (this.world.dragId == null) movePointer(this.world, this.world.pointerX, this.world.pointerY);
+      return;
+    }
+    const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+    if (delta === 0) return;
     const s = this.toLocal(e);
     const p = screenToWorld(this.world, s.x, s.y);
     const bound = this.world.gadgets.find((g) => g.bound);
     const hit = pickGadget(this.world, p.x, p.y) ?? bound;
     if (!hit) return;
     if (hit.kind === "block") {
-      if ((e.altKey || e.ctrlKey) && Math.abs(e.deltaY) > 18) {
-        tuneBlock(this.world, hit, e.deltaY, true);
-      } else if (e.shiftKey && hit.shape < 0.5 && this.world.dragMode !== "draw") {
-        const factor = Math.exp(-e.deltaY * 0.0016);
+      if (e.altKey && e.shiftKey) {
+        if (Math.abs(delta) > 18) tuneBlock(this.world, hit, delta, true);
+      } else if (e.altKey && hit.shape < 0.5 && this.world.dragMode !== "draw") {
+        const factor = Math.exp(-delta * 0.0016);
         hit.w = Math.min(540, Math.max(22, hit.w * factor));
-      } else if (!e.altKey && !e.ctrlKey) {
-        tuneBlock(this.world, hit, e.deltaY, false);
+      } else {
+        tuneBlock(this.world, hit, delta, false);
       }
       return;
     }
-    if (hit.kind === "vortex" && !e.shiftKey) {
-      if (Math.abs(e.deltaY) < 18) return;
-      hit.power = e.deltaY > 0 ? -Math.abs(hit.power) : Math.abs(hit.power);
+    if (hit.kind === "vortex" && e.altKey && !e.shiftKey) {
+      if (Math.abs(delta) < 18) return;
+      hit.power = delta > 0 ? -Math.abs(hit.power) : Math.abs(hit.power);
       return;
     }
-    const factor = Math.exp(-e.deltaY * 0.0016);
-    if (e.shiftKey || hit.kind === "candle" || hit.kind === "vent") scaleGadget(this.world, hit, factor);
-    else if (e.altKey || e.ctrlKey) stretchGadget(this.world, hit, factor);
-    else rotateGadget(this.world, hit, e.deltaY * 0.004);
+    const factor = Math.exp(-delta * 0.0016);
+    if (e.altKey && e.shiftKey) stretchGadget(this.world, hit, factor);
+    else if (e.shiftKey || hit.kind === "candle" || hit.kind === "vent") scaleGadget(this.world, hit, factor);
+    else rotateGadget(this.world, hit, delta * 0.004);
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (e.code === "Space") {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      e.preventDefault();
-      this.audio.unlock();
-      this.keys.add(e.code);
-      this.applyBlow();
-    }
+    if (e.code !== "Space" || e.defaultPrevented || this.world.tool !== "wand") return;
+    // A focused control owns its keyboard input; the shortcut belongs to the room.
+    if (e.target !== this.canvas && e.target !== document.body && e.target !== document.documentElement) return;
+    e.preventDefault();
+    this.audio.unlock();
+    this.keys.add(e.code);
+    this.applyBlow();
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
@@ -425,6 +447,8 @@ export class FumeGame {
     this.blowPointer = null;
     this.uiBlow = false;
     this.panning = false;
+    this.handTap = false;
+    endGadgetDrag(this.world);
     this.world.look.dragging = false;
     this.world.look.panVx = 0;
     this.world.look.panVy = 0;
@@ -458,7 +482,7 @@ export class FumeGame {
     this.canvas.addEventListener("pointerdown", this.onPointerDown);
     this.canvas.addEventListener("pointermove", this.onPointerMove);
     this.canvas.addEventListener("pointerup", this.onPointerUp);
-    this.canvas.addEventListener("pointercancel", this.onPointerUp);
+    this.canvas.addEventListener("pointercancel", this.onPointerCancel);
     this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
     this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     this.resize();
@@ -473,7 +497,7 @@ export class FumeGame {
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
     this.canvas.removeEventListener("pointermove", this.onPointerMove);
     this.canvas.removeEventListener("pointerup", this.onPointerUp);
-    this.canvas.removeEventListener("pointercancel", this.onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this.onPointerCancel);
     this.canvas.removeEventListener("wheel", this.onWheel);
   }
 
@@ -496,7 +520,7 @@ export class FumeGame {
       height: this.world.h,
       glError: this.glError,
       tool: this.world.tool,
-      placeMode: this.world.placeMode,
+      heldToolActive: this.world.heldToolActive,
       gadgetCount: this.world.gadgets.filter((g) => !g.bound).length,
     });
   }
@@ -524,12 +548,15 @@ export class FumeGame {
         this.setParams({ ...this.world.params, ...p });
       },
       setTool: (t: string) => this.setTool(t as ToolKind),
-      setPlaceMode: (on: boolean) => this.setPlaceMode(on),
+      setHeldToolActive: (on: boolean) => this.setHeldToolActive(on),
+      // Older local scripts used Pin to silence the held device. Placement is
+      // now unconditional; keep only that effect of the old debug command.
+      setPlaceMode: (on: boolean) => this.setHeldToolActive(!on),
       placeAt: (x: number, y: number) => placeGadgetAt(this.world, x, y),
       clearGadgets: () => this.clearPlaced(),
       getTools: () => ({
         tool: this.world.tool,
-        placeMode: this.world.placeMode,
+        heldToolActive: this.world.heldToolActive,
         gadgets: this.world.gadgets.filter((g) => !g.bound).map((g) => g.kind),
       }),
       getLook: () => ({ ...this.world.look }),
@@ -567,10 +594,11 @@ declare global {
       getParams: () => SimParams;
       setParams: (p: Partial<SimParams>) => void;
       setTool: (t: string) => void;
+      setHeldToolActive: (on: boolean) => void;
       setPlaceMode: (on: boolean) => void;
       placeAt: (x: number, y: number) => unknown;
       clearGadgets: () => void;
-      getTools: () => { tool: string; placeMode: boolean; gadgets: string[] };
+      getTools: () => { tool: string; heldToolActive: boolean; gadgets: string[] };
       getLook: () => { parallaxX: number; parallaxY: number };
     };
   }

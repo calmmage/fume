@@ -1,0 +1,32 @@
+[
+  {
+    "index": 1,
+    "name": "walnut",
+    "prompt": "Create a production game PBR ALBEDO texture, a perfectly seamless repeating UV material, orthographic straight-on 1 square meter of exquisite solid American black walnut. Bespoke luxury yacht millwork, deep warm chocolate and cognac heartwood, fine elegant straight quarter-sawn vertical grain with occasional beautiful restrained cathedral figure, rich natural color variation and extremely fine pores. New immaculate satin oiled timber, expensive refined joinery material, never rustic, never old, no scratches, no weathering, no grime. Surface texture fills every pixel edge to edge. NO plank seams, NO room, NO furniture, NO perspective, NO bevels, NO lighting or specular highlights baked in, NO shadows, NO vignette, NO text or labels. Crisp realistic high fidelity photographed wood material under flat cross-polarized light, tiling seamlessly in both directions."
+  },
+  {
+    "index": 2,
+    "name": "marble",
+    "prompt": "Production physically based ALBEDO UV texture for luxury architecture, completely seamless tile edge to edge. Polished Verde Alpi precious marble slab, very deep rich forest green and black serpentine stone with elegant narrow ivory calcite veins, occasional restrained antique gold mineral threads. Spacious tranquil areas between branching thin veins, refined expensive Italian boutique hotel material, extraordinarily detailed tiny mineral crystal structure. NOT noisy shattered fragments, NOT busy mosaic, NOT fake plastic, NOT grunge. Orthographic flat straight-on scan of one continuous slab, even cross-polarized illumination. No shine or shadows baked in, no room, no objects, no seams, no borders, no text. True-to-life photorealistic texture fills the entire square, seamless edges."
+  },
+  {
+    "index": 3,
+    "name": "pixel",
+    "prompt": "A high quality handcrafted pixel art GAME TEXTURE ATLAS, exact 2 by 2 grid of FOUR equal square seamless tiles, no gaps, no borders, no labels. TOP LEFT: midnight indigo-blue chiseled stone blocks with delicate ornamental pixel borders and tiny warm gold mineral flecks, richly detailed cozy fantasy observatory walls. TOP RIGHT: richly patinated amber-brown parquet floor tile in carefully arranged diamond inlay with small blue accents, pixel wood grain. BOTTOM LEFT: one intricate ornate golden brass lattice window with deep ultramarine night sky and luminous pale crescent moon, ornamental framed pixel glass, square tile. BOTTOM RIGHT: dark blue astronomical mosaic ceiling with sparse tiny golden stars and compass rose. Every quadrant equally sized, all flat orthographic texture tiles no perspective, pixel clusters perfectly crisp, no gradients, no antialias, no 3D render. An evocative premium indie-game pixel artist palette of 24 colors, minute deliberate pixel detail, visually lavish, dark enough for white smoke overlay. Fill entire image."
+  },
+  {
+    "index": 4,
+    "name": "cosmos",
+    "prompt": "Wide seamless 2:1 equirectangular SPACE ENVIRONMENT TEXTURE for immersive game background. Breathtaking elegant deep-space astrophotography, ink black open space across the middle 60 percent, hundreds of tiny crisp silver stars at distinct intensities and sizes, delicate distant dusty violet and cobalt nebula wisps along the far left and upper edge, fine pearl starlight, a few restrained four point diffraction spikes. Tiny distant amber star cluster low on right. Grand scale and rich intricate photographic detail but peaceful, premium, restrained saturation. No planet filling the image, no sun, no landscape, no room, no text, no logo, no fake neon, no lensflare circles, no huge soft blobs. Horizontal edges match seamlessly for a 360 degree sky. The center stays mostly black so white smoke is legible."
+  },
+  {
+    "index": 5,
+    "name": "window",
+    "prompt": "Photorealistic luxurious architectural GLASS background material. Straight-on view through lightly antique finely rippled clear window glass onto an elegant sunlit Italian courtyard with distant cypress silhouettes, warm limestone, silver olive leaves and soft morning sky. View deliberately softly defocused by the old glass while fine glass surface imperfections remain subtle and tactile. Luminous pale champagne and warm ivory with restrained sage hints. No window frames, no mullions, no border, no text, no room, no furniture, no silhouettes of people. Entire square is glass with light beyond it, no perspective. Rich sophisticated cinematic natural light, exquisite real material texture. Not a blank beige rectangle, not dirty, not grime."
+  },
+  {
+    "index": 6,
+    "name": "geometry",
+    "prompt": "Square cover artwork for an interactive minimalist geometry room. Pure absolute black background, thin precise white architectural wireframe lines defining a deep empty rectangular room in one-point perspective. Small rectangular four-pane window on the left wall drawn ONLY with fine white outlines, all glass completely black. Only room edges and a few subtle white floor perspective lines. Fine technical drawing clarity, contemplative empty black space dominating the center. No textures, no shading, no color, no gray fills, no shadows, no glow, no smoke, no objects, no words, no labels, no gradients. Luxurious extremely restrained geometric art."
+  }
+]

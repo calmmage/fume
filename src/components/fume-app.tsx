@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { FumeGame, type HudSnapshot } from "@/game/fume-game";
 import { paintLayerRoom } from "@/game/layer-room";
-import { loadParams, saveParams, savePreset, type SimParams } from "@/game/params";
-import { loadLook, saveLook, type LookState } from "@/game/look";
+import { DEFAULT_PARAMS, loadParams, saveParams, savePreset, type SimParams } from "@/game/params";
+import { DEFAULT_LOOK, loadLook, saveLook, type LookState } from "@/game/look";
 import { SimPanel } from "@/components/sim-panel";
 import { ToolDock } from "@/components/tool-dock";
 import type { ToolKind } from "@/game/tools";
@@ -20,8 +20,8 @@ const EMPTY: HudSnapshot = {
   width: 1,
   height: 1,
   glError: null,
-  tool: "hand",
-  placeMode: false,
+  tool: "candle",
+  heldToolActive: true,
   gadgetCount: 0,
 };
 
@@ -33,9 +33,11 @@ export function FumeApp() {
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [coarse, setCoarse] = useState(false);
-  const [params, setParams] = useState<SimParams>(loadParams);
-  const [look, setLook] = useState<LookState>(loadLook);
-  const [sceneId, setSceneId] = useState("shelf");
+  // Match the server markup first; the mount effect applies saved settings
+  // before starting the game, without rendering browser-only state during hydration.
+  const [params, setParams] = useState<SimParams>(() => ({ ...DEFAULT_PARAMS }));
+  const [look, setLook] = useState<LookState>(() => ({ ...DEFAULT_LOOK }));
+  const [sceneId, setSceneId] = useState("empty");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -59,7 +61,6 @@ export function FumeApp() {
       gameRef.current = null;
     };
     // Game owns the canvas for the session; params stream in via setParams.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -167,12 +168,12 @@ export function FumeApp() {
 
       <ToolDock
         tool={hud.tool}
-        placeMode={hud.placeMode}
+        heldToolActive={hud.heldToolActive}
         gadgetCount={hud.gadgetCount}
         blowing={hud.blowing}
         coarse={coarse}
         onTool={(t: ToolKind) => gameRef.current?.setTool(t)}
-        onPlaceMode={(on) => gameRef.current?.setPlaceMode(on)}
+        onHeldToolActive={(on) => gameRef.current?.setHeldToolActive(on)}
         onClear={() => gameRef.current?.clearPlaced()}
         onBlow={(on) => gameRef.current?.holdBlow(on)}
       />

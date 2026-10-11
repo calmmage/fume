@@ -1,7 +1,8 @@
 import { sampler, texture, type Gpu, type Texture } from "vgpu";
+import type { RoomStyle } from "./look";
 
-// Small, local CC0 maps. Mips are prepared once; the fluid has no dependency
-// on these textures, and an unavailable image has a neutral material fallback.
+// Generated environment plates. Decode/mip once, only when a style is selected.
+// Geometry starts immediately and never downloads material textures.
 async function material(gpu: Gpu, url: string, signal: AbortSignal): Promise<Texture | null> {
   let image: ImageBitmap | null = null;
   try {
@@ -50,35 +51,63 @@ function solid(gpu: Gpu, rgba: number[]): Texture {
 }
 
 export function loadRoomMaterials(gpu: Gpu) {
+  const neutral = solid(gpu, [16, 16, 16, 255]);
   const bindings = {
-    woodColor: solid(gpu, [51, 54, 54, 255]),
-    woodNormal: solid(gpu, [128, 128, 255, 255]),
-    garden: solid(gpu, [183, 181, 161, 255]),
+    environmentMap: neutral,
     materialSampler: sampler(gpu, {
       addressModeU: "repeat", addressModeV: "repeat",
       magFilter: "linear", minFilter: "linear", mipmapFilter: "linear",
     }),
   };
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3500);
-  const maps = [
-    ["woodColor", "/materials/painted-wood-color.jpg"],
-    ["woodNormal", "/materials/painted-wood-normal.jpg"],
-    ["garden", "/materials/window-garden.jpg"],
-  ] as const;
-  // The first frame uses neutral maps; optional decoration cannot delay smoke.
-  void Promise.allSettled(maps.map(async ([key, url]) => {
-    const map = await material(gpu, url, controller.signal);
-    if (!map) return;
-    if (controller.signal.aborted) { map.destroy(); return; }
-    const previous = bindings[key];
-    bindings[key] = map;
-    previous.destroy();
-  })).then((results) => {
-    if (controller.signal.aborted) return;
-    for (const result of results) {
-      if (result.status === "rejected") console.warn("Fume material fallback:", result.reason);
+  const cache = new Map<string, Promise<Texture | null>>();
+  let current: RoomStyle | null = null;
+  let revision = 0;
+  let retryAt = Infinity;
+  let retryAttempt = 0;
+  function get(name: string) {
+    if (!cache.has(name)) {
+      const pending = material(gpu, `/styles/${name}.webp`, controller.signal).then((map) => {
+        if (!map) cache.delete(name);
+        return map;
+      }).catch((error) => {
+        cache.delete(name);
+        throw error;
+      });
+      cache.set(name, pending);
     }
-  }).finally(() => clearTimeout(timeout));
-  return { bindings, dispose: () => { controller.abort(); clearTimeout(timeout); } };
+    return cache.get(name)!;
+  }
+  function selectStyle(style: RoomStyle) {
+    if (controller.signal.aborted) return;
+    const changed = current !== style;
+    if (!changed && performance.now() < retryAt) return;
+    if (changed) {
+      retryAttempt = 0;
+      bindings.environmentMap = neutral;
+    } else {
+      retryAttempt += 1;
+    }
+    current = style;
+    const request = ++revision;
+    retryAt = Infinity;
+    const retry = () => {
+      if (controller.signal.aborted || request !== revision) return;
+      // draw() calls selectStyle every frame; failed maps retry with backoff,
+      // while successful maps stay bound and cached without another upload.
+      retryAt = Math.min(retryAt, performance.now() + Math.min(30_000, 1000 * 2 ** retryAttempt));
+    };
+    const maps: ["environmentMap", string][] =
+      style === "geometry" ? [] : [["environmentMap", style === "cosmos" ? "cosmos" : `${style}-room`]];
+    for (const [key, name] of maps) {
+      void get(name).then((map) => {
+        if (map && !controller.signal.aborted && request === revision) bindings[key] = map;
+        if (!map) retry();
+      }).catch((error) => {
+        if (!controller.signal.aborted) console.warn("Fume material fallback:", name, error);
+        retry();
+      });
+    }
+  }
+  return { bindings, selectStyle, dispose: () => { controller.abort(); } };
 }

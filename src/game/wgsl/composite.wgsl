@@ -36,6 +36,7 @@ struct Config {
   room_style: f32,
   dust_on: f32,
   material_height: f32,
+  visual_style: f32,
 }
 
 struct Balls {
@@ -52,10 +53,8 @@ struct Balls {
 @group(0) @binding(3) var<storage, read> dye: array<vec4f>;
 @group(0) @binding(4) var<storage, read> lut: array<vec4f>;
 @group(0) @binding(5) var<storage, read> particles: array<vec4f>;
-@group(0) @binding(6) var woodColor: texture_2d<f32>;
-@group(0) @binding(7) var woodNormal: texture_2d<f32>;
-@group(0) @binding(8) var garden: texture_2d<f32>;
-@group(0) @binding(9) var materialSampler: sampler;
+@group(0) @binding(6) var environmentMap: texture_2d<f32>;
+@group(0) @binding(7) var materialSampler: sampler;
 
 fn sample_dye(uv: vec2f) -> vec3f {
   if (!uv_inside(uv)) { return vec3f(0.0); }
@@ -571,18 +570,6 @@ fn hall_tint() -> vec3f {
   return vec3f(0.96, 0.97, 0.98);
 }
 
-fn stone(along: f32, across: f32) -> vec3f {
-  let row = floor(across);
-  let stagger = select(0.0, 0.5, fract(row * 0.5) > 0.25);
-  let u = fract(along + stagger);
-  let v = fract(across);
-  let n = hash21(vec2f(floor(along + stagger), row));
-  var c = mix(vec3f(0.33, 0.32, 0.3), vec3f(0.56, 0.54, 0.5), n);
-  c *= 0.92 + 0.1 * hash21(vec2f(floor(along) + 2.0, row * 1.3));
-  if (u < 0.07 || v < 0.11) { c = vec3f(0.16, 0.155, 0.145); }
-  return c * hall_tint();
-}
-
 fn nearer(best: vec2f, t: f32, face: f32, ro: vec3f, rd: vec3f, hw: f32, hh: f32, z0: f32, z1: f32) -> vec2f {
   if (t < 0.05 || t >= best.x) { return best; }
   let p = ro + rd * t;
@@ -617,7 +604,7 @@ fn dust_motes(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
     let d = length(p - center) / pixel;
     let core = 1.0 - smoothstep(radius * 0.5, radius + 0.55, d);
     let visible = select(0.0, 1.0, h > 0.63);
-    glow += vec3f(0.78, 0.76, 0.69) * core * visible * (0.2 + h * 0.16);
+    glow += select(vec3f(0.78, 0.76, 0.69), vec3f(0.78), config.visual_style < 0.5) * core * visible * (0.2 + h * 0.16);
   }
   return glow;
 }
@@ -648,112 +635,55 @@ fn volume_light(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
   return acc;
 }
 
-fn studio_panel(uv: vec2f, lod: f32) -> vec3f {
-  let q = fract(uv);
-  let edge = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
-  // Each panel has its own subdued paint grain, independent of the moulding.
-  let seed = hash21(floor(uv));
-  let mapUV = vec2f(q.x * 0.32 + seed * 0.67, uv.y * 0.62);
-  let albedo = textureSampleLevel(woodColor, materialSampler, mapUV, lod).rgb;
-  let grainN = textureSampleLevel(woodNormal, materialSampler, mapUV, lod).xy * 2.0 - 1.0;
-  let inset = smoothstep(0.072, 0.083, edge);
-  let bevel = exp(-pow((edge - 0.055) / 0.014, 2.0));
-  let bead = exp(-pow((edge - 0.03) / 0.0035, 2.0));
-  let groove = exp(-pow((edge - 0.082) / 0.005, 2.0));
-  let litSide = select(0.24, 1.0, min(q.x, q.y) < min(1.0 - q.x, 1.0 - q.y));
-  var col = vec3f(0.046, 0.049, 0.047) + albedo * vec3f(0.18, 0.17, 0.14);
-  col *= (0.82 + inset * 0.18) * (0.98 + grainN.x * 0.045 - grainN.y * 0.03);
-  col += vec3f(0.055, 0.052, 0.042) * (bevel * litSide + bead * 0.35);
-  col *= 1.0 - groove * 0.48;
-  col *= 0.42 + 0.58 * smoothstep(0.002, 0.022, edge);
-  return col;
+// Geometry retains the original room projection. Image environments use a
+// bounded translation shared with the pointer and unchanged fluid field.
+fn window_region(p: vec3f, face: f32) -> bool {
+  return face < 1.5 && p.z > 0.7 && p.z < 2.35 && p.y > -0.58 && p.y < 0.12;
 }
 
-fn studio_window(p: vec3f, rd: vec3f, lod: f32) -> vec3f {
-  let q = vec2f(p.z - 0.7, p.y + 0.58);
-  let edges = vec4f(q, vec2f(1.65, 0.7) - q);
-  let edge = min(min(edges.x, edges.y), min(edges.z, edges.w));
-  let bar = min(abs(p.z - 1.5), abs(p.y + 0.24));
-  let frameUV = vec2f(p.z * 0.11, p.y * 1.6);
-  let paint = textureSampleLevel(woodColor, materialSampler, frameUV, lod).rgb;
-  var frame = vec3f(0.033, 0.036, 0.032) + paint * 0.24;
-  let litEdge = select(0.35, 1.0, min(edges.x, edges.y) < min(edges.z, edges.w));
-  frame += vec3f(0.12, 0.115, 0.09) * exp(-pow((edge - 0.021) / 0.005, 2.0)) * litEdge;
-  frame += vec3f(0.085, 0.082, 0.065) * exp(-pow((bar - 0.023) / 0.004, 2.0));
-  // Glass sits behind the painted frame. This ray-plane offset makes the reveal
-  // move with the camera, rather than painting a bright rectangle on the wall.
-  let behind = p + rd * (0.065 / max(-rd.x, 0.08));
-  let backEdge = min(min(behind.z - 0.7, 2.35 - behind.z), min(behind.y + 0.58, 0.12 - behind.y));
-  let pane = smoothstep(0.043, 0.048, edge) * smoothstep(0.016, 0.024, bar);
-  let reveal = smoothstep(0.03, 0.042, backEdge);
-  let normal = normalize(rd);
-  let ripple = textureSampleLevel(woodNormal, materialSampler, p.zy * 0.6, lod + 1.0).xy - 0.5;
-  let outsideUV = vec2f(0.5 + atan2(normal.z, -normal.x) / 6.283185, 0.5 + asin(normal.y) / 3.141593);
-  let outside = textureSampleLevel(garden, materialSampler, outsideUV + ripple * 0.007, 2.5).rgb;
-  let luminance = dot(outside, vec3f(0.3, 0.59, 0.11));
-  var glass = mix(vec3f(luminance), outside, 0.24) * vec3f(0.72, 0.7, 0.61) + vec3f(0.24, 0.245, 0.23);
-  let frost = textureSampleLevel(woodColor, materialSampler, p.zy * 0.73, lod + 1.0).r;
-  glass *= 0.94 + frost * 0.2;
-  let contact = 1.0 - exp(-max(backEdge - 0.035, 0.0) * 55.0) * 0.38;
-  glass *= contact;
-  let revealCol = vec3f(0.11, 0.107, 0.09) + paint * 0.4;
-  return mix(frame, mix(revealCol, glass, reveal), pane);
+fn geometry_surface(p: vec3f, face: f32, hw: f32, hh: f32, z1: f32) -> vec3f {
+  let width = p.z / max(config.material_height, 1.0);
+  var edge = min(hh - abs(p.y), z1 - p.z);
+  if (face > 2.5) { edge = min(hw - abs(p.x), z1 - p.z); }
+  if (face > 4.5) { edge = min(hw - abs(p.x), hh - abs(p.y)); }
+  var line = 1.0 - smoothstep(width * 0.2, width * 1.35, edge);
+  // No filled glass, plaster, grain, panels or lighting in Geometry.
+  if (face < 1.5) {
+    let q = p.zy - vec2f(1.525, -0.23);
+    let frame = abs(sd_box(q, vec2f(0.825, 0.35)));
+    let cross = min(abs(p.z - 1.5), abs(p.y + 0.24));
+    line = max(line, 1.0 - smoothstep(width * 0.35, width * 1.5, frame));
+    if (window_region(p, face)) { line = max(line, 1.0 - smoothstep(width * 0.35, width * 1.5, cross)); }
+  }
+  return vec3f(line * 0.42);
 }
 
-fn studio_surface(p: vec3f, rd: vec3f, face: f32, hw: f32, hh: f32, z1: f32) -> vec3f {
-  var uv = vec2f(p.z * 0.9, (p.y + hh) / (hh * 2.0) * 2.0);
-  if (face > 4.5) { uv = vec2f((p.x + hw) / (hw * 2.0) * 3.0, (p.y + hh) / (hh * 2.0) * 2.0); }
-  let lod = max(0.0, log2(max(p.z, 0.5) * 1024.0 / max(config.material_height, 1.0)));
-  var col = studio_panel(uv, lod);
-  if (face > 2.5 && face < 3.5) {
-    let mapUV = vec2f(p.x * 0.52 + 0.17, p.z * 0.45);
-    let wood = textureSampleLevel(woodColor, materialSampler, mapUV, lod + 0.6).rgb;
-    let n = textureSampleLevel(woodNormal, materialSampler, mapUV, lod + 0.6).xy * 2.0 - 1.0;
-    col = vec3f(0.035, 0.029, 0.022) + wood * vec3f(0.44, 0.35, 0.24);
-    col *= 0.93 + n.y * 0.14;
-    let reflection = exp(-pow((p.x + hw - 0.6 - p.z * 0.18) / 0.75, 2.0));
-    col += vec3f(0.021, 0.019, 0.013) * reflection * (0.5 + wood.r);
-  } else if (face > 3.5 && face < 4.5) {
-    let grain = textureSampleLevel(woodColor, materialSampler, p.xz * 0.36, lod + 1.0).r;
-    col = vec3f(0.045, 0.047, 0.045) + grain * 0.045;
-  } else {
-    let skirting = 1.0 - smoothstep(0.02, 0.085, hh - p.y);
-    col *= 1.0 - skirting * 0.45;
-    col += vec3f(0.06, 0.055, 0.043) * exp(-pow((hh - p.y - 0.086) / 0.004, 2.0));
+fn image_room(uv: vec2f, offset: vec2f) -> vec3f {
+  // A composed environment has the reference's shallow camera and lighting.
+  // UV-cover preserves material proportions; gentle pan keeps the plate, tools
+  // and live smoke anchored together instead of stretching tiles onto a tunnel.
+  let size = vec2f(textureDimensions(environmentMap));
+  let imageAspect = size.x / max(size.y, 1.0);
+  let viewAspect = config.world.x / max(config.world.y, 1.0);
+  let cover = vec2f(min(1.0, viewAspect / imageAspect), min(1.0, imageAspect / viewAspect));
+  let focalX = mix(0.23, 0.5, min(1.0, viewAspect / imageAspect));
+  let framing = vec2f(config.room_cx - 0.5, config.room_cy - 0.5) * 0.35;
+  // Reserve the complete pan range before framing, so no screen-edge pixels
+  // collapse onto a clamped texture border when the camera reaches its limit.
+  let margin = (vec2f(0.5) + vec2f(0.11, 0.08)) * cover / 1.28 + vec2f(0.001);
+  let center = clamp(vec2f(focalX, 0.5) + framing, margin, vec2f(1.0) - margin);
+  let texUV = clamp((uv - offset - 0.5) * cover / 1.28 + center, vec2f(0.001), vec2f(0.999));
+  if (config.visual_style < 1.5) {
+    return textureLoad(environmentMap, vec2i(texUV * (size - 1.0)), 0).rgb;
   }
-  let ambient = 0.7 + 0.55 * exp(-(p.x + hw) * 0.7);
-  col *= ambient * hall_tint();
-  if (config.rays > 0.5) { col += vec3f(0.12, 0.105, 0.075) * window_mask(p); }
-  // Keep the opening and light mask aligned; only its surface is replaced.
-  if (face < 1.5 && p.z > 0.7 && p.z < 2.35 && p.y > -0.58 && p.y < 0.12) {
-    col = studio_window(p, rd, lod);
-  }
-  if (config.room_style > 1.5) {
-    let q = fract(uv);
-    let edge = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
-    let width = max(1.6 / config.world.y, 0.002);
-    let line = 1.0 - smoothstep(0.004, 0.004 + width, edge);
-    col = vec3f(0.018, 0.023, 0.025) + vec3f(0.22, 0.25, 0.24) * line;
-  }
-  return col;
+  let lod = max(0.0, log2(size.y * cover.y / (1.28 * max(config.material_height, 1.0))));
+  return textureSampleLevel(environmentMap, materialSampler, texUV, lod).rgb;
 }
 
 struct RoomView {
   color: vec3f,
   scene_uv: vec2f,
   inside: f32,
-}
-
-fn wood_door(lp: vec2f) -> vec3f {
-  let plank = fract(lp.x * 6.0);
-  let grain = 0.82 + 0.18 * sin(lp.y * 36.0 + floor(lp.x * 6.0) * 1.7);
-  var c = vec3f(0.38, 0.22, 0.1) * grain;
-  if (plank < 0.055) { c *= 0.62; }
-  if (abs(lp.y - 0.18) < 0.025 || abs(lp.y - 0.62) < 0.025) { c *= 0.7; }
-  if (length((lp - vec2f(0.8, 0.55)) * vec2f(1.0, 1.8)) < 0.055) {
-    c = vec3f(0.62, 0.52, 0.28);
-  }
-  return c;
 }
 
 fn march_room(uv: vec2f) -> RoomView {
@@ -765,10 +695,14 @@ fn march_room(uv: vec2f) -> RoomView {
   let hh = max(config.room_hh, 0.12);
   let z0 = 0.7;
   let z1 = max(config.room_depth, z0 + 0.4);
+  if (config.visual_style > 0.5) {
+    // Matches screenToWorld. Shared overscan keeps the visible corners inside
+    // the fluid domain throughout the full bounded pan range.
+    let offset = vec2f(tanh(look.x) * 0.11, tanh(look.y * 2.0) * 0.08);
+    let col = image_room(uv, offset) + dust_motes(ro, rd, z1) + volume_light(ro, rd, z1);
+    return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
+  }
   let zS = z0 + (z1 - z0) * clamp(config.scene_z, 0.08, 0.92);
-  let courses = clamp(config.slices, 6.0, 28.0);
-  let brickLen = (z1 - z0) / courses;
-  let brickH = brickLen * 0.42;
 
   var best = vec2f(1e5, 0.0);
   if (abs(rd.x) > 1e-4) {
@@ -785,32 +719,10 @@ fn march_room(uv: vec2f) -> RoomView {
   let scene_uv = vec2f(sceneP.x / (hw * 2.0) + 0.5, sceneP.y / (hh * 2.0) + 0.5);
   let inside = sceneP.z > z0 && abs(sceneP.x) < hw && abs(sceneP.y) < hh && zS < best.x;
 
-  var col = vec3f(0.015, 0.015, 0.017);
+  var col = vec3f(0.0);
   if (best.x < 1e4) {
     let p = ro + rd * best.x;
-    let fade = mix(0.42, 1.0, exp(-(best.x - z0) * 0.16));
-    if (config.room_style < 0.5 || config.room_style > 1.5) {
-      col = studio_surface(p, rd, best.y, hw, hh, z1);
-    } else if (best.y < 1.5) {
-      col = stone(p.z / brickLen, p.y / brickH) * fade * 0.86;
-    } else if (best.y < 2.5) {
-      col = stone(p.z / brickLen, p.y / brickH) * fade * 0.9;
-    } else if (best.y < 3.5) {
-      col = stone(p.z / brickLen, p.x / brickH) * fade * 0.8;
-    } else if (best.y < 4.5) {
-      col = stone(p.z / brickLen, p.x / brickH) * fade * 0.62;
-    } else {
-      col = stone(p.x / brickH, p.y / brickH) * fade * 0.7;
-      let doorW = hw * 0.46;
-      let doorH = hh * 0.82;
-      if (abs(p.x) < doorW + brickH * 0.2 && p.y > hh - doorH - brickH * 0.15 && p.y < hh) {
-        col = vec3f(0.14, 0.08, 0.04);
-        if (abs(p.x) < doorW && p.y > hh - doorH && p.y < hh) {
-          let lp = vec2f(p.x / doorW * 0.5 + 0.5, (p.y - (hh - doorH)) / doorH);
-          col = wood_door(lp);
-        }
-      }
-    }
+    col = geometry_surface(p, best.y, hw, hh, z1);
   }
 
   let tDust = select(0.0, best.x, best.x < 1e4);

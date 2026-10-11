@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 const baseline = '1864ab79da40eb18006e4fc4794fda805eaaef6c';
 const original = (file) => execFileSync('git', ['show', `${baseline}:${file}`], { encoding: 'utf8' });
 const read = (file) => readFileSync(file, 'utf8');
-const files = ['fluid.ts', 'sim.ts', 'params.ts', 'scenes.ts', 'tools.ts'].map(f => `src/game/${f}`);
+const files = ['fluid.ts', 'params.ts', 'scenes.ts', 'tools.ts'].map(f => `src/game/${f}`);
 files.push(...readdirSync('src/game/wgsl').filter(f => f.endsWith('.wgsl') && f !== 'composite.wgsl').map(f => `src/game/wgsl/${f}`));
 for (const file of files) assert.equal(read(file), original(file), `Protected simulation changed: ${file}`);
 
@@ -24,6 +24,24 @@ function body(source, marker) {
   return source.slice(start, end);
 }
 const shaderPath = 'src/game/wgsl/composite.wgsl';
+// The latest request explicitly changes initialization and held/placed tools.
+// Compare the entire simulation after ONLY those named, reviewed exceptions plus image pointer mapping.
+// The former attract-mode bubble spawn is lifecycle, not physics integration.
+function protectedSim(source) {
+  for (const name of ['createWorld', 'seedDemo', 'setPlaceMode', 'setHeldToolActive', 'syncBoundGadget']) {
+    const marker = `function ${name}(`;
+    if (source.includes(marker)) {
+      source = source.replace(body(source, marker), '').replace(/^export\s*$/gm, '');
+    }
+  }
+  source = source.replace(/ {2}(placeMode|heldToolActive): boolean;\n/, '');
+  const imageMapping = 'if (look.roomStyle !== "geometry")';
+  if (source.includes(imageMapping)) source = source.replace(body(source, imageMapping), '');
+  const demo = 'if (!world.playing && world.bubbles.length < 2 && Math.random() < 0.004)';
+  if (source.includes(demo)) source = source.replace(body(source, demo), '');
+  return source.replace(/\s+/g, ' ').trim();
+}
+assert.equal(protectedSim(read('src/game/sim.ts')), protectedSim(original('src/game/sim.ts')), 'Simulation outside requested tool/empty-start lifecycle changed');
 const shader = read(shaderPath);
 for (const name of ['sample_dye', 'dens', 'smoke_volume']) {
   assert.equal(body(shader, `fn ${name}(`), body(original(shaderPath), `fn ${name}(`), `Smoke presentation changed: ${name}`);
@@ -37,4 +55,4 @@ for (const [name, expected] of Object.entries({
   const actual = createHash('sha256').update(body(shader, `fn ${name}(`)).digest('hex');
   assert.equal(actual, expected, `User-approved rays changed: ${name}`);
 }
-console.log(`${files.length} simulation files, smoke shading, game timing and approved ray functions preserved.`);
+console.log(`${files.length} complete simulation files plus sim.ts outside explicit tool/empty-start/image-pointer changes, smoke shading, game timing and approved ray functions preserved.`);

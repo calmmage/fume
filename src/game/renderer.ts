@@ -86,6 +86,7 @@ export class Renderer {
     this.fluid = ensureFluidSize(this.gpu, this.fluid, world);
     stepFluid(this.fluid, world, dt);
 
+    this.materials.selectStyle(world.look.roomStyle);
     const look = world.params;
     const shake = shakeOffset(world);
     const xy_r_thick = pad18([0, 0, 0, 0]);
@@ -145,7 +146,8 @@ export class Renderer {
         room_hw: world.look.roomW,
         room_hh: world.look.roomH,
         scene_z: world.look.sceneZ,
-        room_style: world.look.roomStyle === "stone" ? 1 : world.look.roomStyle === "contours" ? 2 : 0,
+        room_style: world.look.roomStyle === "geometry" || world.look.roomStyle === "cosmos" ? 2 : 0,
+        visual_style: ["geometry", "pixel", "cosmos", "stone", "wood"].indexOf(world.look.roomStyle),
         dust_on: world.look.dust ? 1 : 0,
         material_height: this.surface.size[1],
       },

@@ -15,7 +15,8 @@ import {
   type SimParams,
 } from "@/game/params";
 import { SCENES } from "@/game/scenes";
-import type { LookState } from "@/game/look";
+import { ROOM_STYLES, type LookState } from "@/game/look";
+import { StylePicker } from "./style-picker";
 import { cn } from "@/lib/utils";
 
 const FEEL: { key: keyof SimParams; label: string }[] = [
@@ -69,6 +70,7 @@ export function SimPanel({
 
   return (
     <>
+      <StylePicker look={look} onLook={onLook} />
       <button
         type="button"
         aria-label="Open simulation lab"
@@ -191,7 +193,7 @@ export function SimPanel({
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   <Chip
                     pressed={look.room}
-                    label="A room with depth. Turn off to reveal the flat or forest background."
+                    label="Show the selected background. Turn off to reveal the flat or forest background."
                     onClick={() => onLook({ ...look, room: !look.room })}
                   >
                     Room
@@ -205,7 +207,7 @@ export function SimPanel({
                 </div>
                 {look.room ? <>
                   <div className="mb-3 flex flex-wrap gap-1.5">
-                    {([["studio", "Studio"], ["stone", "Stone"], ["contours", "Wireframe"]] as const).map(([id, label]) => (
+                    {ROOM_STYLES.map(({ id, label }) => (
                       <Chip key={id} pressed={look.roomStyle === id} onClick={() => onLook({ ...look, roomStyle: id })}>{label}</Chip>
                     ))}
                     <button type="button" onClick={onResetView} className="min-h-11 px-3 font-sans text-xs text-fg underline underline-offset-4">Reset view</button>
@@ -215,14 +217,6 @@ export function SimPanel({
                 {look.room ? (
                   <div className="mb-3 flex flex-col gap-2.5">
                     <Range
-                      label="Layers"
-                      min={6}
-                      max={28}
-                      step={1}
-                      value={look.slices}
-                      onChange={(n) => onLook({ ...look, slices: n })}
-                    />
-                    <Range
                       label="Depth"
                       min={1.6}
                       max={9}
@@ -230,14 +224,16 @@ export function SimPanel({
                       value={look.roomDepth}
                       onChange={(n) => onLook({ ...look, roomDepth: n })}
                     />
-                    <Range
-                      label="Scene"
-                      min={0.12}
-                      max={0.88}
-                      step={0.01}
-                      value={look.sceneZ}
-                      onChange={(n) => onLook({ ...look, sceneZ: n })}
-                    />
+                    {look.roomStyle === "geometry" ? (
+                      <Range
+                        label="Scene"
+                        min={0.12}
+                        max={0.88}
+                        step={0.01}
+                        value={look.sceneZ}
+                        onChange={(n) => onLook({ ...look, sceneZ: n })}
+                      />
+                    ) : null}
                     <Range
                       label="X"
                       min={0.2}
@@ -254,22 +250,24 @@ export function SimPanel({
                       value={look.roomY}
                       onChange={(n) => onLook({ ...look, roomY: n })}
                     />
-                    <Range
-                      label="Width"
-                      min={0.35}
-                      max={1.6}
-                      step={0.01}
-                      value={look.roomW}
-                      onChange={(n) => onLook({ ...look, roomW: n })}
-                    />
-                    <Range
-                      label="Height"
-                      min={0.25}
-                      max={1.2}
-                      step={0.01}
-                      value={look.roomH}
-                      onChange={(n) => onLook({ ...look, roomH: n })}
-                    />
+                    {look.roomStyle === "geometry" ? <>
+                      <Range
+                        label="Width"
+                        min={0.35}
+                        max={1.6}
+                        step={0.01}
+                        value={look.roomW}
+                        onChange={(n) => onLook({ ...look, roomW: n })}
+                      />
+                      <Range
+                        label="Height"
+                        min={0.25}
+                        max={1.2}
+                        step={0.01}
+                        value={look.roomH}
+                        onChange={(n) => onLook({ ...look, roomH: n })}
+                      />
+                    </> : null}
                   </div>
                 ) : (
                   <>
@@ -295,6 +293,7 @@ export function SimPanel({
                     </div>
                   </>
                 )}
+                {(!look.room || (look.roomStyle !== "geometry" && look.roomStyle !== "cosmos")) ? <>
                 <p className="mb-1.5 font-sans text-xs text-muted">Light</p>
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   {(
@@ -309,6 +308,7 @@ export function SimPanel({
                     </Chip>
                   ))}
                 </div>
+                </> : null}
               </section>
 
               <section className="mt-6">

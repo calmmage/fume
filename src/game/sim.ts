@@ -113,7 +113,7 @@ export interface World {
   look: LookState;
   gadgets: Gadget[];
   tool: ToolKind;
-  placeMode: boolean;
+  heldToolActive: boolean;
   dragId: number | null;
   dragMode: "move" | "draw" | "aim" | null;
   dragX: number;
@@ -164,21 +164,21 @@ export function createWorld(w: number, h: number): World {
     hitstop: 0,
     reducedMotion: false,
     pointerX: w * 0.5,
-    pointerY: h * 0.4,
+    pointerY: h * 0.72,
     playing: false,
     scoreArmed: 0,
     params: loadParams(),
     look: loadLook(),
     gadgets: [],
-    tool: "hand",
-    placeMode: false,
+    tool: "candle",
+    heldToolActive: true,
     dragId: null,
     dragMode: null,
     dragX: 0,
     dragY: 0,
     dragThick: 26,
   };
-  seedDemo(world);
+  syncBoundGadget(world, 0);
   return world;
 }
 
@@ -218,10 +218,8 @@ export function setTool(world: World, tool: ToolKind) {
   syncBoundGadget(world, 0);
 }
 
-export function setPlaceMode(world: World, place: boolean) {
-  world.placeMode = place;
-  world.dragId = null;
-  world.dragMode = null;
+export function setHeldToolActive(world: World, active: boolean) {
+  world.heldToolActive = active;
   syncBoundGadget(world, 0);
 }
 
@@ -303,7 +301,7 @@ function syncBoundGadget(world: World, dt: number) {
   }
   g.x = nx;
   g.y = ny;
-  g.on = !world.placeMode;
+  g.on = world.heldToolActive;
 }
 
 export function panRoom(world: World, dx: number, dy: number, dt: number) {
@@ -331,6 +329,12 @@ function coastRoom(world: World, dt: number) {
 export function screenToWorld(world: World, x: number, y: number) {
   const look = world.look;
   if (!look.room) return { x, y };
+  if (look.roomStyle !== "geometry") {
+    return {
+      x: ((x / world.w - Math.tanh(look.parallaxX) * 0.11 - 0.5) / 1.28 + 0.5) * world.w,
+      y: ((y / world.h - Math.tanh(look.parallaxY * 2) * 0.08 - 0.5) / 1.28 + 0.5) * world.h,
+    };
+  }
   const aspect = world.w / Math.max(1, world.h);
   const z0 = 0.7;
   const z1 = Math.max(look.roomDepth, z0 + 0.4);
@@ -530,30 +534,6 @@ export function spawnBubble(
   };
   world.bubbles.push(b);
   return b;
-}
-
-function seedDemo(world: World) {
-  const { w, h } = world;
-  const spots = [[0.62, 0.38, 48, 210]] as const;
-  for (const [nx, ny, r, thick] of spots) {
-    const b = spawnBubble(world, nx * w, ny * h, r);
-    if (!b) continue;
-    b.thickness = thick;
-    b.smoke = 0.55;
-    b.vy = -3 - Math.random() * 4;
-    b.vx = (Math.random() - 0.5) * 6;
-    b.modes[0].amp = 0.05 + Math.random() * 0.04;
-    b.modes[1].amp = 0.025 + Math.random() * 0.02;
-  }
-  const candle = createGadget("candle", w * 0.34, h * 0.78, false);
-  candle.on = true;
-  world.gadgets.push(candle);
-  const block = createGadget("block", w * 0.34, h * 0.48, false);
-  block.on = true;
-  block.w = 200;
-  block.h = 22;
-  block.angle = 0;
-  world.gadgets.push(block);
 }
 
 export function radiusAt(b: Bubble, theta: number): number {
@@ -758,15 +738,6 @@ export function stepWorld(world: World, dt: number) {
   world.bubbles = world.bubbles.filter((b) => b.alive);
   world.floaters = world.floaters.filter((f) => world.time - f.born < 0.85);
 
-  if (!world.playing && world.bubbles.length < 2 && Math.random() < 0.004) {
-    const b = spawnBubble(
-      world,
-      40 + Math.random() * (world.w - 80),
-      world.h * 0.72 + Math.random() * 30,
-      32 + Math.random() * 28,
-    );
-    if (b) b.smoke = 0.14 + Math.random() * 0.1;
-  }
 }
 
 function ensureAttached(world: World) {
