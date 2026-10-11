@@ -3,3 +3,7 @@
 > typecheck
 > tsc --noEmit
 
+
+Production build: PASS (client, server, Nitro). DATABASE_URL absent; migrations skipped by the project.
+Final browser: no shader/JavaScript warnings or errors observed.
+Code snapshot: 0be1cb4.
