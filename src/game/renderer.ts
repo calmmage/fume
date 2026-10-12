@@ -10,6 +10,7 @@ import {
 import { interpolated, type Particle, type World } from "./sim";
 import { packGadgets } from "./tools";
 import { loadRoomMaterials } from "./materials";
+import { createContourRoom } from "./contour-room";
 import compositeWgsl from "./wgsl/composite.wgsl";
 
 const MAX_BALLS = 18;
@@ -38,6 +39,7 @@ export class Renderer {
     private lut: StorageBuffer,
     private particles: StorageBuffer,
     private materials: ReturnType<typeof loadRoomMaterials>,
+    private contours: ReturnType<typeof createContourRoom>,
   ) {}
 
   static async create(
@@ -71,7 +73,7 @@ export class Renderer {
     const composite = effect(gpu, compositeWgsl, { label: "fume-composite" });
     await composite.compile({ colors: [canvasSurface.format] });
     const materials = loadRoomMaterials(gpu);
-    return new Renderer(gpu, canvasSurface, fluid, composite, lut, particles, materials);
+    return new Renderer(gpu, canvasSurface, fluid, composite, lut, particles, materials, createContourRoom(gpu));
   }
 
   resize(cssW: number, cssH: number, dpr: number) {
@@ -157,6 +159,9 @@ export class Renderer {
       lut: this.lut,
       particles: this.particles,
       ...this.materials.bindings,
+      ...(world.look.room && world.look.roomStyle === "geometry" ? {
+        environmentMap: this.contours.update(world.w, world.h, this.dpr, world.look),
+      } : {}),
     });
 
     frame(this.gpu, (f) => {
@@ -166,6 +171,7 @@ export class Renderer {
 
   dispose() {
     this.materials.dispose();
+    this.contours.dispose();
     destroyFluid(this.fluid);
     this.gpu.dispose();
   }

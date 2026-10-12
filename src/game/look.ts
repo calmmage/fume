@@ -4,7 +4,7 @@ export type RayMode = "off" | "shafts" | "sun";
 export type RoomStyle = "geometry" | "pixel" | "cosmos" | "stone" | "wood";
 
 export const ROOM_STYLES: { id: RoomStyle; label: string; detail: string; image: string }[] = [
-  { id: "geometry", label: "Geometry", detail: "White lines. Black space.", image: "geometry" },
+  { id: "geometry", label: "Geometry", detail: "A room drawn in light.", image: "geometry" },
   { id: "pixel", label: "Pixel art", detail: "Quiet light, drawn in pixels.", image: "pixel-room" },
   { id: "cosmos", label: "Cosmos", detail: "Stars, without walls.", image: "cosmos" },
   { id: "stone", label: "Stone", detail: "Verde marble & brass.", image: "stone-room" },

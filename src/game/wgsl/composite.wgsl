@@ -635,29 +635,8 @@ fn volume_light(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
   return acc;
 }
 
-// Geometry retains the original room projection. Image environments use a
-// bounded translation shared with the pointer and unchanged fluid field.
-fn window_region(p: vec3f, face: f32) -> bool {
-  return face < 1.5 && p.z > 0.7 && p.z < 2.35 && p.y > -0.58 && p.y < 0.12;
-}
-
-fn geometry_surface(p: vec3f, face: f32, hw: f32, hh: f32, z1: f32) -> vec3f {
-  let width = p.z / max(config.material_height, 1.0);
-  var edge = min(hh - abs(p.y), z1 - p.z);
-  if (face > 2.5) { edge = min(hw - abs(p.x), z1 - p.z); }
-  if (face > 4.5) { edge = min(hw - abs(p.x), hh - abs(p.y)); }
-  var line = 1.0 - smoothstep(width * 0.2, width * 1.35, edge);
-  // No filled glass, plaster, grain, panels or lighting in Geometry.
-  if (face < 1.5) {
-    let q = p.zy - vec2f(1.525, -0.23);
-    let frame = abs(sd_box(q, vec2f(0.825, 0.35)));
-    let cross = min(abs(p.z - 1.5), abs(p.y + 0.24));
-    line = max(line, 1.0 - smoothstep(width * 0.35, width * 1.5, frame));
-    if (window_region(p, face)) { line = max(line, 1.0 - smoothstep(width * 0.35, width * 1.5, cross)); }
-  }
-  return vec3f(line * 0.42);
-}
-
+// Image environments use a bounded translation shared with the pointer and
+// unchanged fluid field. Geometry is a cached drawing of a furnished interior.
 fn image_room(uv: vec2f, offset: vec2f) -> vec3f {
   // A composed environment has the reference's shallow camera and lighting.
   // UV-cover preserves material proportions; gentle pan keeps the plate, tools
@@ -722,11 +701,7 @@ fn march_room(uv: vec2f) -> RoomView {
   let scene_uv = sceneP.xy * scene_scale / config.world + 0.5;
   let inside = sceneP.z > z0 && abs(sceneP.x) < hw && abs(sceneP.y) < hh && zS < best.x;
 
-  var col = vec3f(0.0);
-  if (best.x < 1e4) {
-    let p = ro + rd * best.x;
-    col = geometry_surface(p, best.y, hw, hh, z1);
-  }
+  var col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
 
   let tDust = select(0.0, best.x, best.x < 1e4);
   col += dust_motes(ro, rd, tDust);
