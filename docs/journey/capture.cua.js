@@ -69,3 +69,13 @@ await reportTab.markDeliverable();
 // Begin -> Wand -> hold at the center of the visible room for 750ms.
 // Capture at 1280x720 and 390x844, compare a bubble's horizontal/vertical diameter.
 // Reproduction uses the actual GPU canvas, not synthetic test scene injection.
+
+// 12 October furnished Geometry, code 26efd61. Final confirmation sequence:
+// Portrait 390x844: reload -> Begin -> click [191,504] -> Held tool active off.
+// Capture 28-geometry-phone; horizontal scroll at [195,420], 0.12 pages -> 29-geometry-pan.
+// Background style: Geometry -> capture 30-geometry-picker; close picker.
+// Desktop 1440x900: reload -> Begin -> click [708,648] -> Held tool active off.
+// Capture 27-geometry-desktop and inspect preview.dev.logs({levels:["error","warn"]}).
+// Separately checked Wood selection -> rendered Wood -> Geometry selection.
+// 25-geometry-reference and 26-geometry-rejected are Petr's attachments, not new app shots.
+// Reset viewport and leave the preview marked as the deliverable.

@@ -1,0 +1,34 @@
+Fume Geometry correction — 12 October 2026
+Code revision: 26efd61 (codex/fume-atmosphere)
+Environment: http://127.0.0.1:5188/ — local development only
+
+PASS npm run typecheck
+PASS npm run build (DATABASE_URL unset; migration intentionally skipped by existing script)
+PASS scoped ESLint: contour-room.ts, renderer.ts, look.ts, style-picker.tsx
+PASS git diff --check
+PASS Impeccable detect over changed UI sources: []
+PASS 31 focused tests:
+  node --test scripts/fume-hydration.test.mjs scripts/tool-interactions.test.mjs scripts/look-state.test.mjs scripts/room-materials.test.mjs scripts/contour-room.test.mjs
+PASS node scripts/check-preserved-smoke.mjs:
+  19 complete simulation files plus sim.ts outside explicit tool/empty-start/view-pointer changes,
+  smoke shading, game timing and approved ray functions preserved.
+
+Observed in the actual browser:
+- 1440x900 and 390x844: furnished white contours on black, framed window, sofa,
+  low table, TV console, curved chaise, two vessels and stems.
+- First inspection: phone TV too tall, vessels obscured by the chaise.
+  Corrected together and confirmed in final captures.
+- Reload starts muted with Candle and held effect active.
+- Clicking places a candle; held-effect off leaves the placed candle emitting.
+- Ordinary horizontal scrolling changes the room perspective.
+- Wood renders when chosen, switching back restores Geometry.
+- Geometry picker preview depicts the same furnished room and is not cropped.
+- Final local browser warning/error log: []
+
+Performance contract: 600 stationary frames trigger one room upload in the regression;
+camera changes update the existing texture; viewport changes destroy the previous one.
+No full frame-rate benchmark or physical-trackpad comfort claim.
+The furniture is visual geometry, not smoke collision geometry.
+The original smoke, bubble dynamics, isotropic projection and accepted ray functions
+were not changed in this correction. Full inherited test runner not claimed green.
+No push or deployment.
