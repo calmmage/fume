@@ -94,3 +94,21 @@ await reportTab.markDeliverable();
 // Reset override. Inspect dev logs (warnings/errors), leave one GPU tab open.
 // The 8K artifact is generated independently from the same model and WGSL:
 // node scripts/render-cosmos-preview.mjs /private/tmp/fume-cosmos-8k.png
+
+// 12 October space correction. Run through CUA in the existing preview tab;
+// never open another GPU simulation. These supersede the earlier bands/plates.
+// Before mutating files, save raw captures outside Vite's watched tree at
+// /private/tmp/fume-space-shots. Project writes can reload the simulation.
+// Desktop override1440x900 reports1200x750 CSS: Stone ->39before-pan;
+// Hand drag[550,300]→[670,360] ->40after-pan. Choose Geometry, Candle,
+// place[380,440], held off; let live smoke reach the top ->41geometry.
+// Select Cosmos ->42; Wood ->43; Pixel art ->44.
+// Phone override390x844 reports325x703 CSS: Geometry, clear placed,
+// place[135,320] with held off ->45full-height-smoke. Cosmos ->46; Stone ->47.
+// Geometry ->Wand, hold[180,310]700ms ->48round-bubble.
+// Reset override; native preview540x829. Capture only after sizing settles:
+// Geometry ->49; Stone ->50; Hand drag[380,270]→[250,320] ->51.
+// Cosmos ->52 native. Inspect every raw capture and console warns/errors.
+// Native8K uses render-cosmos-preview.mjs with the current point field/shader.
+// Convert actual captures to the matching numbered WebPs; do not crop away
+// interface controls or relabel requested widths as measured CSS dimensions.

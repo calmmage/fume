@@ -6,7 +6,7 @@
 
 “Textures/ final look are still cheap ugly shit. LET ME SHOW YOU AGAIN: THIS IS WHAT IT SHOULD FEEL LIKE!!!”
 
-The attached [Fume reference](references/fume-visual-target.jpg) is the authority: an intimate, almost frontal charcoal paneled wall, pale light entering at the far left, deep quiet shadows, fine live smoke and restrained iridescent bubbles. Repeating a high-resolution tile down a deep box failed the composition even when the tile itself looked detailed. The background must give the smoke space.
+The attached [Fume reference](references/fume-visual-target.jpg) is the authority for mood, light and material quality: charcoal paneling, pale light at the left, deep quiet shadows, fine live smoke and restrained iridescent bubbles. Petr clarified on 12 October that its close camera is inspiration, not literal framing: the background belongs farther away, with more space in the room. Preserve richness while showing perspective walls, floor and ceiling.
 
 ## Required behavior
 
@@ -20,13 +20,25 @@ The attached [Fume reference](references/fume-visual-target.jpg) is the authorit
 
 Keep the original fluid solver, presets, numerical defaults, smoke shading and frame timing from `1864ab7`. Changes to startup, held/placed devices and image pointer mapping are explicit, separately tested exceptions; they are not smoke retuning. `scripts/check-preserved-smoke.mjs` compares eighteen whole simulation files, all tool defaults except the explicitly requested upright Fire pose, remaining simulation code, the smoke helpers and the accepted light functions.
 
-Geometry projects an original furnished contour drawing, cached between camera or viewport changes. Its simulation plane retains the corrected isotropic projection. Cosmos now projects individual stars and galactic dust from continuous world-space depths, with native-resolution GPU sprites and depth-dependent camera movement. Pixel art, Stone and Wood use generated environment images with bounded camera translation and matching pointer/smoke translation. Those images are composed views, **not reconstructed 3D rooms or calibrated PBR materials**. Full-resolution source material images remain in `docs/style-assets/originals`; do not call them measured albedo/normal/roughness maps. The Geometry picker preview is generated from its actual contour drawing with `node scripts/render-contour-preview.mjs`.
+Geometry projects an original furnished contour drawing, cached between camera or viewport changes. The smoke/pointer plane now covers the complete canvas isotropically without an artificial wall-box cutoff. Cosmos projects individual stars, a spiral galaxy and connected turbulent emission from continuous world-space depths, at native resolution. Pixel art, Stone and Wood use actual perspective wall/floor/ceiling planes with UV appearance textures, a single distant authored back-wall surface, a side-wall window and bounded camera translation. These are simple interior geometry and generated appearance maps, **not calibrated PBR materials or a 3D fluid solver**. Full-resolution source material images remain in `docs/style-assets/originals`; do not call them measured albedo/normal/roughness maps. The Geometry picker preview is generated from its actual contour drawing with `node scripts/render-contour-preview.mjs`.
 
 Generate the room art through Gemini on `msuorange`, using the explicitly authorized reference upload. Keep actual model labels, download dimensions, prompts and source files in [the provenance record](style-assets/provenance.json). Use the [image route guide](/Users/petrlavrov/calm/skills/library/automation/generate-cool-images/routes.md); no automatic Higgsfield detour.
 
 Spatial points are fixed small marks at four depths, moved by the camera. No autonomous fog blobs. This is a visual reference, not a claim to prevent motion sickness.
 
-## 12 October: Cosmos, controls and Fire
+## Current correction: space, smoke coverage and camera response
+
+Petr: “Still blurry garbage … Why just stripes though?”; “why the fuck is smoke zone limited below ceiling?!”; “On the room page the room doesn't move”; “the wall is too close … inspiration, not literal … more space in the room”. The three supplied screenshots are the anti-reference for this revision.
+
+1. Three soft Cosmos stripes → one connected domain-warped emission field with bent dark channels, a tilted spiral galaxy and stellar nurseries. Native-resolution rendering and a real 7680×4320 source remain; 14,000 stars plus 190,000 emission/galaxy samples occupy continuous depth.
+2. Blurry large grains → separate fine luminous grains, low-energy diffuse coverage and crisp star cores. Inspect the actual surface and 8K source; more pixels alone do not prove good art.
+3. Geometry smoke stops below its drawn ceiling → remove the obsolete rectangular visibility gate, keep every visible screen corner inside the field, and share the isotropic pointer transform. Solver, bubble dynamics and approved light functions remain protected.
+4. Room barely moves / reversing gets stuck → use bounded actual camera translation for material rooms; 80px drag analytically moves back-wall details 36px on either axis at default depth. Clear inertia at limits, shorten coasting and preserve ordinary trackpad scrolling.
+5. Wall is too close → back wall occupies 60% width and 58% height at default settings, with perspective side walls, floor, ceiling and a left opening. Depth/W/H/framing controls affect actual geometry. Generated walnut, marble and window assets are reused; rejected Pixel atlas stays unused.
+
+Code e40fc73. Local browser evidence covers desktop, phone and the user's native preview width. The [current journey](journey/index.html#room-depth) includes their before screenshots, the new perspectives, pan comparisons, full-height smoke and round bubbles. All 46 focused tests, typecheck, scoped lint, preservation guard and production compilation pass. There is no measured physical-trackpad comfort or whole-app FPS claim.
+
+## Earlier revision: Cosmos, controls and Fire
 
 Petr: “The cosmos scene is fucking FLAT!!!”; “AT LEAST … 8k!!! or 16 k!!”; “rounded rectangles with TIGHT corners and MATCH SIZE”; “the bottom panel CHANGES … LAYOUT”; “Why have title screen at all?”; “DO PROPER … FIRE!! AND WTF IT STARTS ON ITS SIDE?!”
 
@@ -38,7 +50,7 @@ Fire now starts at angle 0 rather than −π/2. Five animated tapered flame tong
 
 Code `2a4204d`, local only. The independent review caught and corrected opposite camera movement before the final captures. Production compilation, typecheck, scoped lint, 37 focused tests and the smoke/ray preservation guard pass. The existing [journey](journey/index.html#cosmos-controls) records all five corrections, actual browser measurements and image provenance. No full frame-rate benchmark or photographic-fire claim is made.
 
-## Top five fixes and verification
+## Earlier revision: top five fixes and verification
 
 1. Tiled corridor composition → shallow, reference-based environment plates; inspect the complete app, not only the assets.
 2. Similar/hidden styles → five distinct image cards directly on the canvas.

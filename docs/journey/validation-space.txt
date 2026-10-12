@@ -1,0 +1,9 @@
+12 October 2026 — local Fume correction, code e40fc73
+
+46 focused tests passed. Typecheck, scoped ESLint, production Vite/Nitro compilation and diff check passed. check-preserved-smoke.mjs passed: original 18 whole simulation files, numerical defaults, smoke helpers, frame timing and accepted ray function hashes protected. Only exact view/tool/startup and material-camera delegates are normalized.
+
+Actual browser inspected via CUA: desktop1200x750 CSS (requested1440x900), phone325x703 CSS (requested390x844), native540x829. No horizontal overflow on phone. Raw responsive screenshots include unused browser edge area; native shots fill the frame. Geometry smoke crosses the former top cutoff; placed candle remains active with held off; Wand bubble visually round. Stone Hand drag visibly changes window/back-wall perspective. Wood/Pixel use farther perspective surfaces. Cosmos runtime shows new spiral/cloud composition. Final browser warn/error log empty.
+
+Native runtime Cosmos shader rendered directly at7680x4320 (204000 samples). Stationary-cache test:600 unchanged updates do not redraw/reupload. No physical trackpad comfort test or app FPS claim. Generated appearance maps are not calibrated PBR; decorative furniture does not add collision bodies. Local only, no push or deployment.
+
+Independent fresh visual review: ship for local review of the latest three corrections;14 current captures+3 rejected screenshots+mood reference+8K preview inspected. P2 stippled Cosmos and prominent foreground marble limitations recorded in review-space.md. No user acceptance claimed.
