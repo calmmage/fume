@@ -18,13 +18,25 @@ The attached [Fume reference](references/fume-visual-target.jpg) is the authorit
 
 ## Implementation boundary
 
-Keep the original fluid solver, presets, numerical defaults, smoke shading and frame timing from `1864ab7`. Changes to startup, held/placed devices and image pointer mapping are explicit, separately tested exceptions; they are not smoke retuning. `scripts/check-preserved-smoke.mjs` compares nineteen whole simulation files, remaining simulation code, the smoke helpers and the accepted light functions.
+Keep the original fluid solver, presets, numerical defaults, smoke shading and frame timing from `1864ab7`. Changes to startup, held/placed devices and image pointer mapping are explicit, separately tested exceptions; they are not smoke retuning. `scripts/check-preserved-smoke.mjs` compares eighteen whole simulation files, all tool defaults except the explicitly requested upright Fire pose, remaining simulation code, the smoke helpers and the accepted light functions.
 
-Geometry projects an original furnished contour drawing, cached between camera or viewport changes. Its simulation plane retains the corrected isotropic projection. The other backgrounds use generated environment images with bounded camera translation and matching pointer/smoke translation. They are composed views, **not a reconstructed 3D room or calibrated PBR materials**. Full-resolution source material images remain in `docs/style-assets/originals`; do not call them measured albedo/normal/roughness maps. The Geometry picker preview is now generated from its actual contour drawing with `node scripts/render-contour-preview.mjs`.
+Geometry projects an original furnished contour drawing, cached between camera or viewport changes. Its simulation plane retains the corrected isotropic projection. Cosmos now projects individual stars and galactic dust from continuous world-space depths, with native-resolution GPU sprites and depth-dependent camera movement. Pixel art, Stone and Wood use generated environment images with bounded camera translation and matching pointer/smoke translation. Those images are composed views, **not reconstructed 3D rooms or calibrated PBR materials**. Full-resolution source material images remain in `docs/style-assets/originals`; do not call them measured albedo/normal/roughness maps. The Geometry picker preview is generated from its actual contour drawing with `node scripts/render-contour-preview.mjs`.
 
 Generate the room art through Gemini on `msuorange`, using the explicitly authorized reference upload. Keep actual model labels, download dimensions, prompts and source files in [the provenance record](style-assets/provenance.json). Use the [image route guide](/Users/petrlavrov/calm/skills/library/automation/generate-cool-images/routes.md); no automatic Higgsfield detour.
 
 Spatial points are fixed small marks at four depths, moved by the camera. No autonomous fog blobs. This is a visual reference, not a claim to prevent motion sickness.
+
+## 12 October: Cosmos, controls and Fire
+
+Petr: “The cosmos scene is fucking FLAT!!!”; “AT LEAST … 8k!!! or 16 k!!”; “rounded rectangles with TIGHT corners and MATCH SIZE”; “the bottom panel CHANGES … LAYOUT”; “Why have title screen at all?”; “DO PROPER … FIRE!! AND WTF IT STARTS ON ITS SIDE?!”
+
+Cosmos contains 14,000 seeded individual stars at continuous depths from 5 to 160 and 38,000 luminous dust points in folded galactic filaments. Near and far points move by different amounts, in the same direction as the preserved smoke plane. One instanced GPU pass draws the sky at the actual surface resolution; a stationary camera reuses it. The old low-resolution Cosmos photograph is no longer loaded by the renderer. The picker has a small preview of the new scene. The actual runtime shader also rendered a lossless [7680×4320 PNG](style-assets/generated/cosmos-native-8k.png) and a [WebP](style-assets/generated/cosmos-native-8k.webp); neither is a source bitmap stretched in the app. Reproduce with `node scripts/render-cosmos-preview.mjs /private/tmp/fume-cosmos-8k.png` on a GPU-enabled host.
+
+The app opens directly into the simulation, muted with Candle selected and held effect on. New visitors retain Geometry as the default; returning visitors keep their chosen style. Tool, mute and Settings icons are 44×44 with 6px corners; the labeled style selector has the same height. The dock reserves the held switch, two hint lines and Wand action space for every tool, so selection and emission changes cannot reflow it. The unused Spatial points toggle is hidden while native Cosmos is shown.
+
+Fire now starts at angle 0 rather than −π/2. Five animated tapered flame tongues, warm edges, hot cores, charred crossed logs and pulsing ember cells replace the old two-blob shape. Source dimensions, emission power and fluid integration remain unchanged. The full shader's Fire work exits early outside its local footprint.
+
+Code `2a4204d`, local only. The independent review caught and corrected opposite camera movement before the final captures. Production compilation, typecheck, scoped lint, 37 focused tests and the smoke/ray preservation guard pass. The existing [journey](journey/index.html#cosmos-controls) records all five corrections, actual browser measurements and image provenance. No full frame-rate benchmark or photographic-fire claim is made.
 
 ## Top five fixes and verification
 

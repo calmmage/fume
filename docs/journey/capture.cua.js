@@ -79,3 +79,18 @@ await reportTab.markDeliverable();
 // Separately checked Wood selection -> rendered Wood -> Geometry selection.
 // 25-geometry-reference and 26-geometry-rejected are Petr's attachments, not new app shots.
 // Reset viewport and leave the preview marked as the deliverable.
+
+// 12 October Cosmos/controls/Fire, code 2a4204d. These steps supersede Begin above.
+// The current tab's normal preview is 540x829. Reload -> inspect muted Candle entry.
+// Capture 32-cosmos-entry. Hand -> drag [410,315] to [110,315] -> 33-cosmos-pan.
+// Fire -> click [271,490] -> Held tool active off -> 34-fire-upright.
+// Background style: Cosmos -> 35-cosmos-picker -> Close background styles.
+// Lab: confirm Spatial points is absent for Cosmos. Close Lab.
+// At requested 390x844 and 1440x900 overrides, iterate all nine tool buttons.
+// Read DOM bounding boxes for data-tool-grid, data-tool-hint, data-tool-action;
+// read button width/height/radius. Persist as layout-cosmos.json.
+// Browser's existing display scale reports 325x703 and 1200x750 CSS pixels;
+// retain the reported dimensions rather than relabeling them as 390/1440.
+// Reset override. Inspect dev logs (warnings/errors), leave one GPU tab open.
+// The 8K artifact is generated independently from the same model and WGSL:
+// node scripts/render-cosmos-preview.mjs /private/tmp/fume-cosmos-8k.png

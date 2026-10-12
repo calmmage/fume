@@ -1,0 +1,48 @@
+Fume Cosmos, controls and Fire — 12 October 2026
+Code revision: 2a4204d (codex/fume-atmosphere)
+Environment: http://127.0.0.1:5188/ — local development only
+
+PASS npm run typecheck
+PASS production Vite/Nitro compilation (node scripts/with-app-env.mjs ./node_modules/.bin/vite build)
+PASS scoped ESLint: changed game TS and UI TSX files
+PASS git diff --check
+PASS Impeccable detector over changed UI sources and the journey page: []
+PASS 37 focused tests:
+  node --test scripts/fume-hydration.test.mjs scripts/tool-interactions.test.mjs
+    scripts/look-state.test.mjs scripts/room-materials.test.mjs
+    scripts/contour-room.test.mjs scripts/cosmos-model.test.mjs
+    scripts/cosmos-renderer.test.mjs
+PASS preservation guard:
+  18 complete simulation files, tool defaults except the explicitly requested upright Fire pose,
+  simulation outside previous explicit tool/lifecycle/view-pointer exceptions, smoke shading,
+  game frame timing, accepted window_mask and volume_light functions.
+PASS native 7680x4320 image rendered locally with the runtime Cosmos shader on the Mac GPU.
+  Original PNG dimensions checked; q95 WebP has the same dimensions.
+
+Observed in the actual browser:
+- Immediate canvas entry: Candle, held effect active, Unmute; no Begin or title screen.
+- Cosmos preference survives reload. New-visitor Geometry default verified by initialization tests.
+- Crisp star field rendered without the old Cosmos bitmap; drag moves near and far stars.
+- Upright placed Fire has flame tongues and embers, and remains active with held effect off.
+- The independent review caught opposite star movement; fixed both axes and added a regression.
+- The unused Spatial points toggle is absent while Cosmos is shown in the Lab.
+- All nine tool selections have identical grid, hint and action bounds at each inspected width.
+  44x44 icon buttons, 6px corners; mobile grid about 298x106, desktop about 538x58.
+  Exact live measurements: layout-cosmos.json.
+- Style picker preview matches the new scene.
+- Final warning/error log: []
+
+Viewport evidence:
+  Override requests 390x844 and 1440x900 reported 325x703 and 1200x750 CSS pixels
+  at the browser's existing display scale. Also inspected the normal 540x829 panel.
+  Original normal-panel screenshots are preserved as numbered WebP files.
+
+Performance contract:
+  600 stationary updates produce one sky draw and one star upload in the regression.
+  Camera changes reuse the texture; size and pixel density invalidate it.
+  No full FPS benchmark or physical-trackpad comfort measurement is claimed.
+
+Original fluid solver, numerical settings, smoke presentation, bubble dynamics
+and accepted rays remain unchanged. This request changes background rendering,
+UI lifecycle/layout and Fire's presentation/default orientation.
+No push or deployment performed.
