@@ -68,6 +68,22 @@ function mountGame(t) {
   return { game, world: game.world, snapshots, event, click };
 }
 
+test("room projection keeps bubble radii circular across portrait, landscape, and room proportions", () => {
+  for (const [w, h] of [[390, 844], [650, 708], [1440, 900], [900, 900]]) {
+    for (const [roomW, roomH] of [[0.9, 0.62], [0.3, 1.2], [1.5, 0.3]]) {
+      const world = sim.createWorld(w, h);
+      Object.assign(world.look, { room: true, roomStyle: "geometry", roomW, roomH, parallaxX: 0.4, parallaxY: -0.2 });
+      const center = sim.screenToWorld(world, w / 2, h / 2);
+      const right = sim.screenToWorld(world, w / 2 + 20, h / 2);
+      const below = sim.screenToWorld(world, w / 2, h / 2 + 20);
+      const scaleX = right.x - center.x;
+      const scaleY = below.y - center.y;
+      assert.ok(Math.abs(scaleX - scaleY) < 1e-8,
+        `${w}x${h}, room ${roomW}x${roomH}: a circular bubble renders at width/height ${scaleY / scaleX}`);
+    }
+  }
+});
+
 test("empty scene starts with only an active held Candle, no placed tools or bubbles", () => {
   const world = sim.createWorld(1000, 700);
   assert.equal(world.tool, "candle");

@@ -25,7 +25,7 @@ function body(source, marker) {
 }
 const shaderPath = 'src/game/wgsl/composite.wgsl';
 // The latest request explicitly changes initialization and held/placed tools.
-// Compare the entire simulation after ONLY those named, reviewed exceptions plus image pointer mapping.
+// Compare the entire simulation after ONLY those named, reviewed exceptions plus view/pointer mapping.
 // The former attract-mode bubble spawn is lifecycle, not physics integration.
 function protectedSim(source) {
   for (const name of ['createWorld', 'seedDemo', 'setPlaceMode', 'setHeldToolActive', 'syncBoundGadget']) {
@@ -37,6 +37,21 @@ function protectedSim(source) {
   source = source.replace(/ {2}(placeMode|heldToolActive): boolean;\n/, '');
   const imageMapping = 'if (look.roomStyle !== "geometry")';
   if (source.includes(imageMapping)) source = source.replace(body(source, imageMapping), '');
+  // 12 October: fix the reported oval bubbles by changing only the projection,
+  // not bubble dynamics or the fluid solver. Normalize the exact reviewed patch.
+  source = source.replace(`  // One scale for both axes keeps the fluid, bubble film and hit targets aligned
+  // without stretching circles when the viewport and room have different shapes.
+  const sceneScale = Math.min(
+    world.w / (Math.max(look.roomW, 0.15) * 2),
+    world.h / (Math.max(look.roomH, 0.12) * 2),
+  );
+  return {
+    x: px * sceneScale + world.w * 0.5,
+    y: py * sceneScale + world.h * 0.5,
+  };`, `  return {
+    x: (px / (look.roomW * 2) + 0.5) * world.w,
+    y: (py / (look.roomH * 2) + 0.5) * world.h,
+  };`);
   const demo = 'if (!world.playing && world.bubbles.length < 2 && Math.random() < 0.004)';
   if (source.includes(demo)) source = source.replace(body(source, demo), '');
   return source.replace(/\s+/g, ' ').trim();
@@ -55,4 +70,4 @@ for (const [name, expected] of Object.entries({
   const actual = createHash('sha256').update(body(shader, `fn ${name}(`)).digest('hex');
   assert.equal(actual, expected, `User-approved rays changed: ${name}`);
 }
-console.log(`${files.length} complete simulation files plus sim.ts outside explicit tool/empty-start/image-pointer changes, smoke shading, game timing and approved ray functions preserved.`);
+console.log(`${files.length} complete simulation files plus sim.ts outside explicit tool/empty-start/view-pointer changes, smoke shading, game timing and approved ray functions preserved.`);

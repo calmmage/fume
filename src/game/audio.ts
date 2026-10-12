@@ -6,7 +6,7 @@ export class FumeAudio {
   private sfx: GainNode | null = null;
   private blowGain: GainNode | null = null;
   private blowSrc: AudioBufferSourceNode | null = null;
-  private muted = false;
+  private muted = true;
   private unlocked = false;
 
   unlock() {

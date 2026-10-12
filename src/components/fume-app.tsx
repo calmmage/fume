@@ -31,7 +31,7 @@ export function FumeApp() {
   const gameRef = useRef<FumeGame | null>(null);
   const [hud, setHud] = useState<HudSnapshot>(EMPTY);
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [coarse, setCoarse] = useState(false);
   // Match the server markup first; the mount effect applies saved settings
   // before starting the game, without rendering browser-only state during hydration.

@@ -716,7 +716,10 @@ fn march_room(uv: vec2f) -> RoomView {
   best = nearer(best, (z1 - ro.z) / rd.z, 5.0, ro, rd, hw, hh, z0, z1);
 
   let sceneP = ro + rd * zS;
-  let scene_uv = vec2f(sceneP.x / (hw * 2.0) + 0.5, sceneP.y / (hh * 2.0) + 0.5);
+  // Use an isotropic simulation plane, matching screenToWorld. Fitting each
+  // axis independently to the room turns round bubbles into ovals on phones.
+  let scene_scale = min(config.world.x / (hw * 2.0), config.world.y / (hh * 2.0));
+  let scene_uv = sceneP.xy * scene_scale / config.world + 0.5;
   let inside = sceneP.z > z0 && abs(sceneP.x) < hw && abs(sceneP.y) < hh && zS < best.x;
 
   var col = vec3f(0.0);

@@ -343,9 +343,15 @@ export function screenToWorld(world: World, x: number, y: number) {
   const ny = y / world.h - look.roomY;
   const px = -look.parallaxX * 0.35 + nx * zS;
   const py = -look.parallaxY * 0.22 + ny * zS;
+  // One scale for both axes keeps the fluid, bubble film and hit targets aligned
+  // without stretching circles when the viewport and room have different shapes.
+  const sceneScale = Math.min(
+    world.w / (Math.max(look.roomW, 0.15) * 2),
+    world.h / (Math.max(look.roomH, 0.12) * 2),
+  );
   return {
-    x: (px / (look.roomW * 2) + 0.5) * world.w,
-    y: (py / (look.roomH * 2) + 0.5) * world.h,
+    x: px * sceneScale + world.w * 0.5,
+    y: py * sceneScale + world.h * 0.5,
   };
 }
 
