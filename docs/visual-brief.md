@@ -39,3 +39,7 @@ Walk through the same local URL on desktop and a 390×844 phone. Capture before/
 ## Saved contour reference
 
 [Hairline, @speedy_devv](https://www.instagram.com/p/DeIQfJsz2vc/), underlying [Hairline by Lucas Marques](https://hairline.lucasmarkes.com). Local Jev index `ig:DeIQfJsz2vc`, `jev-1.13.0`, `repo_or_tool`, `namedrop`. The cached reel shows the contour terrain at 23.4 seconds. Retrieved offline; no Instagram account access. October 8 is the save-as-bot observation, not a proven save time.
+
+## 12 October follow-up
+
+Petr: “Make sound off by default”; “I think you broke the bubbles”. Start audio muted in both the UI and audio engine. Fix Geometry projection with one scale shared by X/Y, keeping bubble film, smoke and pointer hit testing aligned. The previous portrait-stretch limitation is resolved; solver, smoke parameters, dynamics and rays remain unchanged. Regression failed at 3.14:1 and now passes over 12 viewport/room combinations. Browser evidence is in the existing journey report.

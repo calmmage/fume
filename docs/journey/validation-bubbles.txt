@@ -1,0 +1,192 @@
+12 October 2026, Europe/Moscow.
+Before: projection regression failed, 390x844 circle width/height 3.1414392059553307.
+After:
+TAP version 13
+# Subtest: first render is identical with server defaults and persisted browser settings
+ok 1 - first render is identical with server defaults and persisted browser settings
+  ---
+  duration_ms: 26.216333
+  type: 'test'
+  ...
+# Subtest: fresh and returning old-style users start with black Geometry and no grain
+ok 2 - fresh and returning old-style users start with black Geometry and no grain
+  ---
+  duration_ms: 0.952875
+  type: 'test'
+  ...
+# Subtest: each new style persists without saving camera momentum or changing smoke settings
+ok 3 - each new style persists without saving camera momentum or changing smoke settings
+  ---
+  duration_ms: 0.403917
+  type: 'test'
+  ...
+# Subtest: corrupt and obsolete new-style preferences recover to valid defaults
+ok 4 - corrupt and obsolete new-style preferences recover to valid defaults
+  ---
+  duration_ms: 0.172333
+  type: 'test'
+  ...
+# Subtest: partial style preferences keep default light while an explicit Off remains Off
+ok 5 - partial style preferences keep default light while an explicit Off remains Off
+  ---
+  duration_ms: 0.217459
+  type: 'test'
+  ...
+# Subtest: Geometry stays network-free and failed environment maps retry with bounded requests
+ok 6 - Geometry stays network-free and failed environment maps retry with bounded requests
+  ---
+  duration_ms: 2.515125
+  type: 'test'
+  ...
+# Subtest: reselecting a style retries a failed map immediately
+ok 7 - reselecting a style retries a failed map immediately
+  ---
+  duration_ms: 0.624208
+  type: 'test'
+  ...
+# Subtest: persistent failure backs off, and old style results cannot overwrite the selected style
+ok 8 - persistent failure backs off, and old style results cannot overwrite the selected style
+  ---
+  duration_ms: 0.561625
+  type: 'test'
+  ...
+# Subtest: room projection keeps bubble radii circular across portrait, landscape, and room proportions
+ok 9 - room projection keeps bubble radii circular across portrait, landscape, and room proportions
+  ---
+  duration_ms: 1.186708
+  type: 'test'
+  ...
+# Subtest: empty scene starts with only an active held Candle, no placed tools or bubbles
+ok 10 - empty scene starts with only an active held Candle, no placed tools or bubbles
+  ---
+  duration_ms: 0.103042
+  type: 'test'
+  ...
+# Subtest: Shelf and the other saved layouts remain available after an empty start
+ok 11 - Shelf and the other saved layouts remain available after an empty start
+  ---
+  duration_ms: 0.416083
+  type: 'test'
+  ...
+# Subtest: Empty stays empty before Begin even when the former demo random condition would trigger
+ok 12 - Empty stays empty before Begin even when the former demo random condition would trigger
+  ---
+  duration_ms: 0.68925
+  type: 'test'
+  ...
+# Subtest: held-effect toggle never changes placed tools or the activity of new copies
+ok 13 - held-effect toggle never changes placed tools or the activity of new copies
+  ---
+  duration_ms: 0.103958
+  type: 'test'
+  ...
+# Subtest: primary gadget clicks always place, including over a placed tool or a bubble
+ok 14 - primary gadget clicks always place, including over a placed tool or a bubble
+  ---
+  duration_ms: 1.406
+  type: 'test'
+  ...
+# Subtest: Hand moves an existing tool and pans empty space without spawning
+ok 15 - Hand moves an existing tool and pans empty space without spawning
+  ---
+  duration_ms: 0.402875
+  type: 'test'
+  ...
+# Subtest: every image background maps the pointer through the same bounded pan offset as the image
+ok 16 - every image background maps the pointer through the same bounded pan offset as the image
+  ---
+  duration_ms: 0.661542
+  type: 'test'
+  ...
+# Subtest: image-view corners stay inside the smoke field even at extreme pan and aspect ratios
+ok 17 - image-view corners stay inside the smoke field even at extreme pan and aspect ratios
+  ---
+  duration_ms: 0.449791
+  type: 'test'
+  ...
+# Subtest: Wand still blows on hold, releases on lift, and pops on a circle click
+ok 18 - Wand still blows on hold, releases on lift, and pops on a circle click
+  ---
+  duration_ms: 0.693541
+  type: 'test'
+  ...
+# Subtest: Block still draws to size, and a new fan can be aimed and resized
+ok 19 - Block still draws to size, and a new fan can be aimed and resized
+  ---
+  duration_ms: 0.342
+  type: 'test'
+  ...
+# Subtest: unmodified trackpad scrolling pans both axes for every tool without changing zoom or gadgets
+ok 20 - unmodified trackpad scrolling pans both axes for every tool without changing zoom or gadgets
+  ---
+  duration_ms: 0.7255
+  type: 'test'
+  ...
+# Subtest: wheel line/page units are normalized and Ctrl pinch stays native
+ok 21 - wheel line/page units are normalized and Ctrl pinch stays native
+  ---
+  duration_ms: 0.305083
+  type: 'test'
+  ...
+# Subtest: scrolling the camera never re-aims a held fan on the next simulation step
+ok 22 - scrolling the camera never re-aims a held fan on the next simulation step
+  ---
+  duration_ms: 0.219583
+  type: 'test'
+  ...
+# Subtest: modifier scrolling deliberately adjusts Block, Vortex, and fan without panning
+ok 23 - modifier scrolling deliberately adjusts Block, Vortex, and fan without panning
+  ---
+  duration_ms: 0.417459
+  type: 'test'
+  ...
+# Subtest: right click deletes a placed device and clearing keeps the held tool
+ok 24 - right click deletes a placed device and clearing keeps the held tool
+  ---
+  duration_ms: 0.207125
+  type: 'test'
+  ...
+# Subtest: Space preserves focused UI activation and still blows from the room
+ok 25 - Space preserves focused UI activation and still blows from the room
+  ---
+  duration_ms: 0.18725
+  type: 'test'
+  ...
+# Subtest: losing focus ends a tool drag before the next hover movement
+ok 26 - losing focus ends a tool drag before the next hover movement
+  ---
+  duration_ms: 0.115917
+  type: 'test'
+  ...
+# Subtest: a canceled Hand touch never commits a bubble pop
+ok 27 - a canceled Hand touch never commits a bubble pop
+  ---
+  duration_ms: 0.139708
+  type: 'test'
+  ...
+# Subtest: the focused Blow button supports keyboard hold, release, and focus loss
+ok 28 - the focused Blow button supports keyboard hold, release, and focus loss
+  ---
+  duration_ms: 3.083791
+  type: 'test'
+  ...
+# Subtest: dock exposes one held-effect switch, with no Follow/Pin placement modes
+ok 29 - dock exposes one held-effect switch, with no Follow/Pin placement modes
+  ---
+  duration_ms: 8.413708
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 433.113084
+
+Typecheck, scoped ESLint, preservation check: PASS.
+Production build: PASS; DATABASE_URL unset, database migration explicitly skipped.
+Browser: Geometry bubbles circular at 1280x720 and 390x844, default Unmute button, Unmute -> Mute -> Unmute toggles passed. No warning/error console entries in fresh tab.
+Code revision: 3aa5022.

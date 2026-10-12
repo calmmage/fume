@@ -63,3 +63,9 @@ await capture('19-stone-desktop');
 // Check Wand hold/pop, then restore desired preview and leave only one GPU tab.
 await reportViewport.reset();
 await reportTab.markDeliverable();
+
+// 12 October bubble regression: fresh Geometry, desktop and portrait.
+// On reload confirm the button is named Unmute; click it, check Mute, click back.
+// Begin -> Wand -> hold at the center of the visible room for 750ms.
+// Capture at 1280x720 and 390x844, compare a bubble's horizontal/vertical diameter.
+// Reproduction uses the actual GPU canvas, not synthetic test scene injection.
