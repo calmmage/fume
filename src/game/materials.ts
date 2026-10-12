@@ -1,7 +1,7 @@
 import { sampler, texture, type Gpu, type Texture } from "vgpu";
 import type { RoomStyle } from "./look";
 
-// Generated environment plates. Decode/mip once, only when a style is selected.
+// Generated back-wall plates and surface maps. Decode/mip once per selected style.
 // Geometry starts immediately and never downloads material textures.
 async function material(gpu: Gpu, url: string, signal: AbortSignal): Promise<Texture | null> {
   let image: ImageBitmap | null = null;
@@ -54,6 +54,9 @@ export function loadRoomMaterials(gpu: Gpu) {
   const neutral = solid(gpu, [16, 16, 16, 255]);
   const bindings = {
     environmentMap: neutral,
+    wallMap: neutral,
+    floorMap: neutral,
+    windowMap: neutral,
     materialSampler: sampler(gpu, {
       addressModeU: "repeat", addressModeV: "repeat",
       magFilter: "linear", minFilter: "linear", mipmapFilter: "linear",
@@ -85,6 +88,9 @@ export function loadRoomMaterials(gpu: Gpu) {
     if (changed) {
       retryAttempt = 0;
       bindings.environmentMap = neutral;
+      bindings.wallMap = neutral;
+      bindings.floorMap = neutral;
+      bindings.windowMap = neutral;
     } else {
       retryAttempt += 1;
     }
@@ -97,8 +103,14 @@ export function loadRoomMaterials(gpu: Gpu) {
       // while successful maps stay bound and cached without another upload.
       retryAt = Math.min(retryAt, performance.now() + Math.min(30_000, 1000 * 2 ** retryAttempt));
     };
-    const maps: ["environmentMap", string][] =
-      style === "geometry" || style === "cosmos" ? [] : [["environmentMap", `${style}-room`]];
+    const surface = style === "wood" ? "walnut" : style === "stone" ? "marble" : "pixel-room";
+    const maps: ["environmentMap" | "wallMap" | "floorMap" | "windowMap", string][] =
+      style === "geometry" || style === "cosmos" ? [] : [
+        ["environmentMap", `${style}-room`],
+        ["wallMap", surface],
+        ["floorMap", surface],
+        ["windowMap", style === "pixel" ? "pixel-room" : "window"],
+      ];
     for (const [key, name] of maps) {
       void get(name).then((map) => {
         if (map && !controller.signal.aborted && request === revision) bindings[key] = map;

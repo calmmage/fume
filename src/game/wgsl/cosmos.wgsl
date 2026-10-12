@@ -31,8 +31,8 @@ fn vs_main(@builtin(vertex_index) vertex: u32, @builtin(instance_index) instance
   let wrapped = x - floor((x + span * 0.5) / span) * span;
   let center = vec2f(wrapped / (z * aspect), -(star.point.y - view.camera.y) / z) * 1.45;
   let near = clamp(25.0 / z, 0.8, 3.6);
-  let radius = max(0.42, star.point.w * near);
-  let extent = radius * select(5.0, 2.4, star.color.w > 0.5) * view.density;
+  let radius = max(0.24, star.point.w * near);
+  let extent = radius * select(5.0, 2.0, star.color.w > 0.5) * view.density;
   var out: Vertex;
   out.position = vec4f(center + local * extent * 2.0 / view.size, 0.0, 1.0);
   out.local = local;
@@ -45,7 +45,9 @@ fn vs_main(@builtin(vertex_index) vertex: u32, @builtin(instance_index) instance
 fn fs_main(v: Vertex) -> @location(0) vec4f {
   let r2 = dot(v.local, v.local);
   if (v.kind > 0.5) {
-    return vec4f(v.color * exp(-r2 * 3.5), 1.0);
+    // Fine emission grains retain sub-pixel structure at the native surface
+    // resolution, rather than painting big blurry Gaussian discs.
+    return vec4f(v.color * exp(-r2 * 6.5), 1.0);
   }
   let core = exp(-r2 * 52.0);
   let halo = exp(-r2 * 7.5) * 0.075;

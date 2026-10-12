@@ -1,6 +1,8 @@
 import { DEFAULT_PARAMS, loadParams, type SimParams } from "./params";
 import { loadLook, type LookState } from "./look";
 import { sceneGadgets } from "./scenes";
+import { screenToScene } from "./scene-projection";
+import { coastMaterialRoom, isMaterialRoom, panMaterialRoom } from "./material-room";
 import {
   createGadget,
   hitGadget,
@@ -305,6 +307,10 @@ function syncBoundGadget(world: World, dt: number) {
 }
 
 export function panRoom(world: World, dx: number, dy: number, dt: number) {
+  if (isMaterialRoom(world.look)) {
+    panMaterialRoom(world.look, world.w, world.h, dx, dy, dt);
+    return;
+  }
   const sx = dx / Math.max(1, world.w);
   const sy = (dy / Math.max(1, world.h)) * 0.42;
   world.look.parallaxX += sx;
@@ -316,6 +322,10 @@ export function panRoom(world: World, dx: number, dy: number, dt: number) {
 
 function coastRoom(world: World, dt: number) {
   if (world.look.dragging) return;
+  if (isMaterialRoom(world.look)) {
+    coastMaterialRoom(world.look, dt);
+    return;
+  }
   const vx = world.look.panVx;
   const vy = world.look.panVy;
   if (vx * vx + vy * vy < 1e-4) return;
@@ -335,24 +345,7 @@ export function screenToWorld(world: World, x: number, y: number) {
       y: ((y / world.h - Math.tanh(look.parallaxY * 2) * 0.08 - 0.5) / 1.28 + 0.5) * world.h,
     };
   }
-  const aspect = world.w / Math.max(1, world.h);
-  const z0 = 0.7;
-  const z1 = Math.max(look.roomDepth, z0 + 0.4);
-  const zS = z0 + (z1 - z0) * Math.min(0.92, Math.max(0.08, look.sceneZ));
-  const nx = (x / world.w - look.roomX) * aspect;
-  const ny = y / world.h - look.roomY;
-  const px = -look.parallaxX * 0.35 + nx * zS;
-  const py = -look.parallaxY * 0.22 + ny * zS;
-  // One scale for both axes keeps the fluid, bubble film and hit targets aligned
-  // without stretching circles when the viewport and room have different shapes.
-  const sceneScale = Math.min(
-    world.w / (Math.max(look.roomW, 0.15) * 2),
-    world.h / (Math.max(look.roomH, 0.12) * 2),
-  );
-  return {
-    x: px * sceneScale + world.w * 0.5,
-    y: py * sceneScale + world.h * 0.5,
-  };
+  return screenToScene(world.w, world.h, x, y, look.parallaxX, look.parallaxY);
 }
 
 export function movePointer(world: World, x: number, y: number) {

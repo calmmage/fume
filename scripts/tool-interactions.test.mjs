@@ -85,6 +85,28 @@ test("room projection keeps bubble radii circular across portrait, landscape, an
   }
 });
 
+test("Geometry has no artificial smoke ceiling or side boundary anywhere on the canvas", () => {
+  for (const [w, h] of [[390, 844], [650, 708], [1440, 900], [1920, 600]]) {
+    const world = sim.createWorld(w, h);
+    Object.assign(world.look, { room: true, roomStyle: "geometry" });
+    for (const [roomW, roomH, roomDepth, sceneZ] of [[0.9, 0.62, 5, 0.35], [0.35, 0.25, 9, 0.88], [1.6, 1.2, 1.6, 0.12]]) {
+      Object.assign(world.look, { roomW, roomH, roomDepth, sceneZ });
+      for (const [roomX, roomY] of [[0.2, 0.25], [0.5, 0.5], [0.8, 0.75]]) {
+        for (const panX of [-1e6, 0, 1e6]) {
+          for (const panY of [-0.65, 0, 0.65]) {
+            Object.assign(world.look, { roomX, roomY, parallaxX: panX, parallaxY: panY });
+            for (const [x, y] of [[0, 0], [w, 0], [0, h], [w, h], [w / 2, h * 0.1]]) {
+              const p = sim.screenToWorld(world, x, y);
+              assert.ok(p.x > 0 && p.x < w, `${w}×${h}: visible x=${x} must sample live fluid`);
+              assert.ok(p.y > 0 && p.y < h, `${w}×${h}: visible y=${y} must sample live fluid`);
+            }
+          }
+        }
+      }
+    }
+  }
+});
+
 test("empty scene starts with only an active held Candle, no placed tools or bubbles", () => {
   const world = sim.createWorld(1000, 700);
   assert.equal(world.tool, "candle");
@@ -225,7 +247,7 @@ test("every image background maps the pointer through the same bounded pan offse
   assert.deepEqual(sim.screenToWorld(world, 80, 90), { x: 80, y: 90 }, "flat view ignores room pan");
   world.look.room = true;
   world.look.roomStyle = "geometry";
-  assert.notDeepEqual(sim.screenToWorld(world, 80, 90), expected(80, 90), "Geometry retains its perspective mapping");
+  assert.deepEqual(sim.screenToWorld(world, 80, 90), expected(80, 90), "Geometry also keeps its full visible canvas inside the field");
 });
 
 test("image-view corners stay inside the smoke field even at extreme pan and aspect ratios", () => {

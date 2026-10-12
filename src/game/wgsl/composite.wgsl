@@ -55,6 +55,9 @@ struct Balls {
 @group(0) @binding(5) var<storage, read> particles: array<vec4f>;
 @group(0) @binding(6) var environmentMap: texture_2d<f32>;
 @group(0) @binding(7) var materialSampler: sampler;
+@group(0) @binding(8) var wallMap: texture_2d<f32>;
+@group(0) @binding(9) var floorMap: texture_2d<f32>;
+@group(0) @binding(10) var windowMap: texture_2d<f32>;
 
 fn sample_dye(uv: vec2f) -> vec3f {
   if (!uv_inside(uv)) { return vec3f(0.0); }
@@ -675,28 +678,134 @@ fn volume_light(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
   return acc;
 }
 
-// Image environments use a bounded translation shared with the pointer and
-// unchanged fluid field. Geometry is a cached drawing of a furnished interior.
-fn image_room(uv: vec2f, offset: vec2f) -> vec3f {
-  // A composed environment has the reference's shallow camera and lighting.
-  // UV-cover preserves material proportions; gentle pan keeps the plate, tools
-  // and live smoke anchored together instead of stretching tiles onto a tunnel.
+// Neighbor rays intersect the SAME wall plane to supply explicit UV gradients.
+// No derivative intrinsic runs inside a per-pixel wall/ceiling branch.
+fn material_plane_point(ro: vec3f, rd: vec3f, plane: vec3f, normal: vec3f) -> vec3f {
+  let denominator = dot(rd, normal);
+  let safe = select(-1.0, 1.0, denominator >= 0.0) * max(abs(denominator), 1e-5);
+  return ro + rd * (dot(plane - ro, normal) / safe);
+}
+
+fn material_face_uv(p: vec3f, face: f32, hw: f32, hh: f32, depth: f32) -> vec2f {
+  if (face < 2.5) { return vec2f(p.z / depth, p.y / (hh * 2.0) + 0.5); }
+  if (face < 4.5) { return vec2f(p.x / (hw * 2.0) + 0.5, p.z / depth); }
+  return p.xy / vec2f(hw * 2.0, hh * 2.0) + 0.5;
+}
+
+fn material_back_uv(uv: vec2f, hw: f32, hh: f32) -> vec2f {
+  // The authored plate appears once. Its baked left window is replaced by the
+  // actual side-wall opening, and cover preserves the fine grain/pixel aspect.
   let size = vec2f(textureDimensions(environmentMap));
-  let imageAspect = size.x / max(size.y, 1.0);
-  let viewAspect = config.world.x / max(config.world.y, 1.0);
-  let cover = vec2f(min(1.0, viewAspect / imageAspect), min(1.0, imageAspect / viewAspect));
-  let focalX = mix(0.23, 0.5, min(1.0, viewAspect / imageAspect));
-  let framing = vec2f(config.room_cx - 0.5, config.room_cy - 0.5) * 0.35;
-  // Reserve the complete pan range before framing, so no screen-edge pixels
-  // collapse onto a clamped texture border when the camera reaches its limit.
-  let margin = (vec2f(0.5) + vec2f(0.11, 0.08)) * cover / 1.28 + vec2f(0.001);
-  let center = clamp(vec2f(focalX, 0.5) + framing, margin, vec2f(1.0) - margin);
-  let texUV = clamp((uv - offset - 0.5) * cover / 1.28 + center, vec2f(0.001), vec2f(0.999));
+  let imageAspect = size.x * 0.88 / max(size.y, 1.0);
+  let faceAspect = hw / hh;
+  let cover = vec2f(min(1.0, faceAspect / imageAspect), min(1.0, imageAspect / faceAspect));
+  return vec2f(0.12, 0.0) + ((uv - 0.5) * cover + 0.5) * vec2f(0.88, 1.0);
+}
+
+fn material_wall_uv(p: vec3f, uv: vec2f) -> vec2f {
   if (config.visual_style < 1.5) {
-    return textureLoad(environmentMap, vec2i(texUV * (size - 1.0)), 0).rgb;
+    // Fine dark paneling, never the obsolete brick/star/parquet atlas.
+    return vec2f(0.36, 0.04) + uv * vec2f(0.62, 0.92);
   }
-  let lod = max(0.0, log2(size.y * cover.y / (1.28 * max(config.material_height, 1.0))));
-  return textureSampleLevel(environmentMap, materialSampler, texUV, lod).rgb;
+  let period = select(vec2f(3.0), vec2f(2.2, 1.2), config.visual_style > 3.5);
+  return vec2f(p.z, p.y) / period + vec2f(0.0, 0.5);
+}
+
+fn material_floor_uv(p: vec3f, uv: vec2f) -> vec2f {
+  if (config.visual_style < 1.5) { return vec2f(0.45, 0.14) + uv * vec2f(0.38, 0.45); }
+  let period = select(vec2f(3.0), vec2f(2.2, 1.2), config.visual_style > 3.5);
+  return p.xz / period;
+}
+
+fn material_window_uv(p: vec3f) -> vec2f {
+  let windowOffset = max(0.0, config.room_depth - 2.5);
+  let uv = vec2f((p.z - windowOffset - 0.7) / 1.65, (p.y + 0.58) / 0.7);
+  if (config.visual_style < 1.5) { return vec2f(0.004, 0.004) + uv * vec2f(0.032, 0.64); }
+  return uv;
+}
+
+fn material_sample(map: texture_2d<f32>, uv: vec2f, dx: vec2f, dy: vec2f) -> vec3f {
+  if (config.visual_style < 1.5) {
+    let size = vec2f(textureDimensions(map));
+    let footprint = max(length(dx * size), length(dy * size));
+    let level = u32(clamp(floor(log2(max(footprint, 1.0))), 0.0, f32(textureNumLevels(map) - 1u)));
+    let mipSize = textureDimensions(map, level);
+    let at = vec2i(clamp(uv, vec2f(0.0), vec2f(0.99999)) * vec2f(mipSize));
+    return textureLoad(map, at, i32(level)).rgb;
+  }
+  return textureSampleGrad(map, materialSampler, uv, dx, dy).rgb;
+}
+
+fn material_room(uv: vec2f) -> vec3f {
+  let aspect = config.world.x / max(config.world.y, 1.0);
+  let pan = clamp(config.parallax, vec2f(-0.24), vec2f(0.24));
+  let hw = 1.5 * aspect * (config.room_hw / 0.9);
+  let hh = 1.45 * (config.room_hh / 0.62);
+  let depth = max(1.6, config.room_depth);
+  let windowOffset = max(0.0, depth - 2.5);
+  let ro = vec3f(-pan.x * aspect * 5.0 * 0.45, -pan.y * 5.0 * 0.45, 0.0);
+  let rd = vec3f((uv.x - config.room_cx) * aspect, uv.y - (config.room_cy - 0.06), 1.0);
+  var best = vec2f(depth, 5.0);
+  if (abs(rd.x) > 1e-5) {
+    best = nearer(best, (-hw - ro.x) / rd.x, 1.0, ro, rd, hw, hh, 0.0, depth);
+    best = nearer(best, (hw - ro.x) / rd.x, 2.0, ro, rd, hw, hh, 0.0, depth);
+  }
+  if (abs(rd.y) > 1e-5) {
+    best = nearer(best, (hh - ro.y) / rd.y, 3.0, ro, rd, hw, hh, 0.0, depth);
+    best = nearer(best, (-hh - ro.y) / rd.y, 4.0, ro, rd, hw, hh, 0.0, depth);
+  }
+  let p = ro + rd * best.x;
+  var normal = vec3f(0.0, 0.0, -1.0);
+  if (best.y < 1.5) { normal = vec3f(1.0, 0.0, 0.0); }
+  else if (best.y < 2.5) { normal = vec3f(-1.0, 0.0, 0.0); }
+  else if (best.y < 3.5) { normal = vec3f(0.0, -1.0, 0.0); }
+  else if (best.y < 4.5) { normal = vec3f(0.0, 1.0, 0.0); }
+  let pixelStep = 1.0 / max(config.material_height, 1.0);
+  let px = material_plane_point(ro, rd + vec3f(pixelStep, 0.0, 0.0), p, normal);
+  let py = material_plane_point(ro, rd + vec3f(0.0, pixelStep, 0.0), p, normal);
+  let at = material_face_uv(p, best.y, hw, hh, depth);
+  let ax = material_face_uv(px, best.y, hw, hh, depth);
+  let ay = material_face_uv(py, best.y, hw, hh, depth);
+  let toLight = vec3f(-hw + 0.05, -0.24, 1.5 + windowOffset) - p;
+  let diffuse = max(0.0, dot(normal, normalize(toLight)));
+  let illumination = 0.12 + 0.42 * diffuse / (1.0 + length(toLight) * 0.18);
+  var col = vec3f(0.0);
+  if (best.y < 2.5) {
+    let wallUV = material_wall_uv(p, at);
+    let wall = material_sample(wallMap, wallUV, material_wall_uv(px, ax) - wallUV, material_wall_uv(py, ay) - wallUV);
+    col = wall * illumination;
+    if (config.visual_style > 1.5) {
+      let joint = min(fract(p.z / 1.3), 1.0 - fract(p.z / 1.3));
+      col *= 0.7 + 0.3 * smoothstep(0.004, 0.015, joint);
+    }
+  } else if (best.y < 4.5) {
+    let floorUV = material_floor_uv(p, at);
+    let floor = material_sample(floorMap, floorUV, material_floor_uv(px, ax) - floorUV, material_floor_uv(py, ay) - floorUV);
+    col = floor * illumination * select(0.72, 0.9, best.y < 3.5);
+  } else {
+    let backUV = material_back_uv(at, hw, hh);
+    col = material_sample(environmentMap, backUV, material_back_uv(ax, hw, hh) - backUV, material_back_uv(ay, hw, hh) - backUV);
+  }
+  // Darken only the contact edges, keeping the authored back-wall lighting.
+  var edge = min(hw - abs(p.x), hh - abs(p.y));
+  if (best.y < 2.5) { edge = min(depth - p.z, hh - abs(p.y)); }
+  else if (best.y < 4.5) { edge = min(depth - p.z, hw - abs(p.x)); }
+  col *= 0.68 + 0.32 * smoothstep(0.0, 0.10, edge);
+  if (best.y < 1.5) {
+    let windowZ = p.z - windowOffset;
+    let opening = step(-0.58, p.y) * step(p.y, 0.12) * step(0.7, windowZ) * step(windowZ, 2.35);
+    let panes = smoothstep(0.016, 0.028, abs(p.y + 0.24)) * smoothstep(0.016, 0.028, abs(windowZ - 1.5));
+    if (opening * panes > 0.0) {
+      let glassUV = material_window_uv(p);
+      let glass = material_sample(windowMap, glassUV, material_window_uv(px) - glassUV, material_window_uv(py) - glassUV);
+      col = mix(col, glass * 0.88 + vec3f(0.10, 0.085, 0.06), opening * panes);
+    }
+  }
+  col += dust_motes(ro, rd, best.x);
+  // Keep the accepted ray functions unchanged; translate their left wall to
+  // the wider material room in the caller's coordinates.
+  col += volume_light(ro + vec3f(hw - config.room_hw, 0.0, -windowOffset), rd, best.x);
+  return col;
 }
 
 struct RoomView {
@@ -724,11 +833,9 @@ fn march_room(uv: vec2f) -> RoomView {
       let col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
       return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
     }
-    let col = image_room(uv, offset) + dust_motes(ro, rd, z1) + volume_light(ro, rd, z1);
+    let col = material_room(uv);
     return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
   }
-  let zS = z0 + (z1 - z0) * clamp(config.scene_z, 0.08, 0.92);
-
   var best = vec2f(1e5, 0.0);
   if (abs(rd.x) > 1e-4) {
     best = nearer(best, (-hw - ro.x) / rd.x, 1.0, ro, rd, hw, hh, z0, z1);
@@ -740,19 +847,18 @@ fn march_room(uv: vec2f) -> RoomView {
   }
   best = nearer(best, (z1 - ro.z) / rd.z, 5.0, ro, rd, hw, hh, z0, z1);
 
-  let sceneP = ro + rd * zS;
-  // Use an isotropic simulation plane, matching screenToWorld. Fitting each
-  // axis independently to the room turns round bubbles into ovals on phones.
-  let scene_scale = min(config.world.x / (hw * 2.0), config.world.y / (hh * 2.0));
-  let scene_uv = sceneP.xy * scene_scale / config.world + 0.5;
-  let inside = sceneP.z > z0 && abs(sceneP.x) < hw && abs(sceneP.y) < hh && zS < best.x;
+  // The furnished backdrop does not bound the live fluid. The old room-box
+  // intersection cut a rectangular ceiling through smoke and bubbles. Keep
+  // every visible pixel inside the field, matching screenToScene for pointers.
+  let offset = vec2f(tanh(look.x) * 0.11, tanh(look.y * 2.0) * 0.08);
+  let scene_uv = (uv - offset - 0.5) / 1.28 + 0.5;
 
   var col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
 
   let tDust = select(0.0, best.x, best.x < 1e4);
   col += dust_motes(ro, rd, tDust);
   col += volume_light(ro, rd, tDust);
-  return RoomView(col, scene_uv, select(0.0, 1.0, inside));
+  return RoomView(col, scene_uv, 1.0);
 }
 
 @fragment

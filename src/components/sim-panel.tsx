@@ -226,16 +226,6 @@ export function SimPanel({
                       value={look.roomDepth}
                       onChange={(n) => onLook({ ...look, roomDepth: n })}
                     />
-                    {look.roomStyle === "geometry" ? (
-                      <Range
-                        label="Scene"
-                        min={0.12}
-                        max={0.88}
-                        step={0.01}
-                        value={look.sceneZ}
-                        onChange={(n) => onLook({ ...look, sceneZ: n })}
-                      />
-                    ) : null}
                     <Range
                       label="X"
                       min={0.2}

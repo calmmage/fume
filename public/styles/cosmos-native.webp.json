@@ -1,0 +1,4 @@
+{
+  "prompt": "Procedurally authored Fume Cosmos, 12 October 2026. Origin: src/game/cosmos-model.ts and src/game/wgsl/cosmos.wgsl, rendered directly with scripts/render-cosmos-preview.mjs at 7680 x 4320. Seed 0x51a7c05. Continuous-depth 14000 stars and 190000 emission grains including a tilted spiral galaxy, connected turbulent cloud field and carved dark channels. Runtime uses its own surface-resolution GPU target; this file is a reproducible preview, not a stretched backdrop. No AI image generation prompt was used. Smaller previews are derived from the native 8K source.",
+  "createdAt": "2026-10-12T19:14:08.299Z"
+}

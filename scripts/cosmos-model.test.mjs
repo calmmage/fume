@@ -42,3 +42,22 @@ test("camera movement gives near stars ten times the parallax of distant stars a
     assert.ok(Math.abs(shift(10).y / shift(100).y - 10) < 1e-10);
   }
 });
+
+test("nebula emission includes diffuse coverage, sharp grains and continuous depth", () => {
+  const points = buildCosmosPoints();
+  let diffuse = 0, fine = 0;
+  const depths = new Set();
+  const occupied = new Set();
+  for (let i = COSMOS_STARS; i < COSMOS_COUNT; i++) {
+    const at = i * 8;
+    const [x, y, z, radius] = points.subarray(at, at + 4);
+    depths.add(z);
+    occupied.add(`${Math.floor(x / 15)},${Math.floor(y / 15)}`);
+    if (radius >= 3) diffuse++;
+    if (radius < 1.2) fine++;
+  }
+  assert.ok(diffuse > 20000, "the sky needs connected emission between fine grains");
+  assert.ok(fine > 100000, "fine detail must remain at native resolution");
+  assert.ok(depths.size > (COSMOS_COUNT - COSMOS_STARS) * 0.95);
+  assert.ok(occupied.size > 60, "clouds must occupy a broad field, rather than thin bands");
+});

@@ -44,18 +44,30 @@ function protectedSim(source) {
   source = source.replace(/ {2}(placeMode|heldToolActive): boolean;\n/, '');
   const imageMapping = 'if (look.roomStyle !== "geometry")';
   if (source.includes(imageMapping)) source = source.replace(body(source, imageMapping), '');
-  // 12 October: fix the reported oval bubbles by changing only the projection,
-  // not bubble dynamics or the fluid solver. Normalize the exact reviewed patch.
-  source = source.replace(`  // One scale for both axes keeps the fluid, bubble film and hit targets aligned
-  // without stretching circles when the viewport and room have different shapes.
-  const sceneScale = Math.min(
-    world.w / (Math.max(look.roomW, 0.15) * 2),
-    world.h / (Math.max(look.roomH, 0.12) * 2),
-  );
+  // The reported Geometry ceiling explicitly permits replacing only its view
+  // mapping. Restore that exact call to the original mapping before comparing
+  // the rest of sim.ts; solver and bubble behavior retain no new exceptions.
+  source = source.replace('import { screenToScene } from "./scene-projection";\n', '');
+  // The requested perceptible material-room pan permits only these exact
+  // scoped delegates. Geometry/Cosmos pan and all simulation code still compare.
+  source = source.replace('import { coastMaterialRoom, isMaterialRoom, panMaterialRoom } from "./material-room";\n', '');
+  source = source.replace(`  if (isMaterialRoom(world.look)) {
+    panMaterialRoom(world.look, world.w, world.h, dx, dy, dt);
+    return;
+  }\n`, '');
+  source = source.replace(`  if (isMaterialRoom(world.look)) {
+    coastMaterialRoom(world.look, dt);
+    return;
+  }\n`, '');
+  source = source.replace('  return screenToScene(world.w, world.h, x, y, look.parallaxX, look.parallaxY);', `  const aspect = world.w / Math.max(1, world.h);
+  const z0 = 0.7;
+  const z1 = Math.max(look.roomDepth, z0 + 0.4);
+  const zS = z0 + (z1 - z0) * Math.min(0.92, Math.max(0.08, look.sceneZ));
+  const nx = (x / world.w - look.roomX) * aspect;
+  const ny = y / world.h - look.roomY;
+  const px = -look.parallaxX * 0.35 + nx * zS;
+  const py = -look.parallaxY * 0.22 + ny * zS;
   return {
-    x: px * sceneScale + world.w * 0.5,
-    y: py * sceneScale + world.h * 0.5,
-  };`, `  return {
     x: (px / (look.roomW * 2) + 0.5) * world.w,
     y: (py / (look.roomH * 2) + 0.5) * world.h,
   };`);

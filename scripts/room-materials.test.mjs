@@ -49,7 +49,7 @@ test("Geometry and native Cosmos stay network-free; failed environment maps retr
   await settle();
   const neutral = materials.bindings.environmentMap;
   for (let i = 0; i < 120; i++) materials.selectStyle("stone");
-  assert.equal(requests.length, 1, "render frames do not spam failed requests");
+  assert.equal(requests.length, 3, "render frames do not spam failed requests, and wall/floor share one surface map");
   advance(1001);
   materials.selectStyle("stone");
   assert.equal(materials.bindings.environmentMap, neutral, "neutral remains visible during retry");
@@ -60,13 +60,13 @@ test("Geometry and native Cosmos stay network-free; failed environment maps retr
   advance(100_000);
   materials.selectStyle("stone");
   await settle();
-  assert.equal(requests.length, 2, "successful style stops retrying");
+  assert.equal(requests.length, 4, "successful style stops retrying");
   const stone = materials.bindings.environmentMap;
   materials.selectStyle("geometry");
   materials.selectStyle("stone");
   await settle();
   assert.equal(materials.bindings.environmentMap, stone);
-  assert.equal(requests.length, 2, "reselecting a successful style uses its cached texture");
+  assert.equal(requests.length, 4, "reselecting a successful style uses its cached texture");
 });
 
 test("reselecting a style retries a failed map immediately", async (t) => {
@@ -80,6 +80,40 @@ test("reselecting a style retries a failed map immediately", async (t) => {
   await settle();
   assert.equal(requests.length, 2);
   assert.equal(materials.bindings.environmentMap.label, "/styles/pixel-room.webp");
+});
+
+test("photographic rooms reuse their generated surface maps; Pixel only uses its authored room", async (t) => {
+  const { materials, requests } = fixture(t, ok);
+  materials.selectStyle("wood");
+  await settle();
+  assert.deepEqual(requests, ["/styles/wood-room.webp", "/styles/walnut.webp", "/styles/window.webp"]);
+  assert.equal(materials.bindings.wallMap.label, "/styles/walnut.webp");
+  assert.equal(materials.bindings.wallMap, materials.bindings.floorMap, "wall and floor share a GPU texture");
+  materials.selectStyle("stone");
+  await settle();
+  assert.equal(materials.bindings.wallMap.label, "/styles/marble.webp");
+  assert.equal(materials.bindings.windowMap.label, "/styles/window.webp");
+  assert.equal(requests.filter(url => url.endsWith("/window.webp")).length, 1, "window map is shared between styles");
+  materials.selectStyle("pixel");
+  await settle();
+  for (const key of ["environmentMap", "wallMap", "floorMap", "windowMap"]) {
+    assert.equal(materials.bindings[key].label, "/styles/pixel-room.webp");
+  }
+  assert.equal(requests.filter(url => url.endsWith("/pixel-room.webp")).length, 1);
+  assert.equal(requests.some(url => url.endsWith("/pixel.webp")), false, "rejected brick/star atlas never loads");
+});
+
+test("late surface and window downloads cannot replace the newly selected room", async (t) => {
+  const pending = [];
+  const { materials } = fixture(t, url => url.includes("pixel-room") ? ok() : new Promise(resolve => pending.push(resolve)));
+  materials.selectStyle("wood");
+  materials.selectStyle("pixel");
+  await settle();
+  for (const finish of pending) finish(ok());
+  await settle();
+  for (const key of ["environmentMap", "wallMap", "floorMap", "windowMap"]) {
+    assert.equal(materials.bindings[key].label, "/styles/pixel-room.webp");
+  }
 });
 
 test("persistent failure backs off, and old style results cannot overwrite the selected style", async (t) => {

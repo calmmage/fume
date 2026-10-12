@@ -16,7 +16,7 @@
     {
       "asset": "walnut",
       "url": "https://gemini.google.com/app/88f0406aa57cc4bd",
-      "result": "No image. Normally I can help with things like this, but I don’t seem to have access to that content. You can try again or ask me for something else."
+      "result": "No image. Normally I can help with things like this, but I don\u2019t seem to have access to that content. You can try again or ask me for something else."
     },
     {
       "asset": "walnut",
@@ -50,7 +50,7 @@
       "runtimeBytes": 355154,
       "originalBytes": 926061,
       "runtimeSha256": "21effdef6d2a867d26702b65b683db81493c7ed57cf7127465e129ba5aa6d37b",
-      "role": "Archived generated material study; preserved, not sampled at current runtime"
+      "role": "UV appearance texture on Wood side walls, floor and ceiling"
     },
     {
       "index": 2,
@@ -68,7 +68,7 @@
       "runtimeBytes": 356688,
       "originalBytes": 934438,
       "runtimeSha256": "03bea4f38c8e218f92a6a27dc5428691ccb47df6fde8e15d9b9e825a70717e22",
-      "role": "Archived generated material study; preserved, not sampled at current runtime"
+      "role": "UV appearance texture on Stone side walls, floor and ceiling"
     },
     {
       "index": 3,
@@ -123,7 +123,7 @@
       "runtimeBytes": 235368,
       "originalBytes": 783314,
       "runtimeSha256": "9f0caa344405ee085a4d078314feda44edab3dfa8f30b1c61b666bdcd0345291",
-      "role": "Archived generated material study; preserved, not sampled at current runtime"
+      "role": "Generated view on the Wood/Stone side-wall opening"
     },
     {
       "index": 6,
@@ -166,7 +166,7 @@
       "runtimeSha256": "8ca430f29466eaeadd79795952512e5c02407f129cddb8d9662b4269de75000a",
       "optimization": "cwebp q93 m6, original dimensions retained",
       "visualReview": "Viewed full original. Close nearly frontal walnut panelled wall, delicate moulding, fine low-contrast grain, far-left window; no visible text, smoke, bubbles, furniture, floor or ceiling. Source appearance accepted by parent after local/live phone review.",
-      "role": "Full composed environment plate sampled at runtime"
+      "role": "Single distant back-wall surface in a perspective room; original prompt is historical generation intent, not current camera authority."
     },
     {
       "name": "pixel-room",
@@ -190,7 +190,7 @@
       "runtimeSha256": "30b298e16b34b3eacf370af1c08e9ea244a3c8b704774250d9f6cc06f5dad510",
       "optimization": "cwebp lossless m6, original dimensions retained",
       "visualReview": "Viewed full original. Fine dark indigo pixel-art panelled wall, dithered edge lighting, far-left window, restrained composition; no tile atlas, stars, tunnel, smoke, bubbles or text. Source is JPEG, so lossless WebP preserves downloaded pixels without claiming mathematically pure pixel edges.",
-      "role": "Full composed environment plate sampled at runtime"
+      "role": "Single distant back-wall surface in a perspective room; original prompt is historical generation intent, not current camera authority."
     },
     {
       "name": "stone-room",
@@ -214,7 +214,7 @@
       "runtimeSha256": "236d7a70a408d3fb010ea34ad3e95a4ce4c3adf9a65fd3a93db7ed94bb802841",
       "optimization": "cwebp q93 m6, original dimensions retained",
       "visualReview": "Viewed full original. Dark green-black marble panels with restrained thin brass and veins, left-window surface light, shallow frontal composition; no smoke, bubbles, text, tunnel, floor or ceiling. Architectural illumination is authored into the plate; live simulation and volumetric rays remain separate.",
-      "role": "Full composed environment plate sampled at runtime"
+      "role": "Single distant back-wall surface in a perspective room; original prompt is historical generation intent, not current camera authority."
     }
   ],
   "accountStatus": {
@@ -235,7 +235,8 @@
     "status": "authorized and uploaded successfully to all three generation conversations",
     "method": "Gemini composer standard image clipboard paste"
   },
-  "updatedAt": "2026-10-11T20:02:53.473Z",
-  "runtimeUsage": "Current Wood, Stone and Pixel styles use wood-room, stone-room and pixel-room full environment plates. Walnut, marble, pixel atlas and window remain archived generated material studies and are not sampled at runtime. Cosmos remains the generated space environment. Geometry live background is analytic white outlines; generated geometry image is a thumbnail study. Application integration is parent-owned.",
-  "roomPlateStatus": "All three reference-based plates generated, downloaded, preserved, optimized and visually inspected."
+  "updatedAt": "2026-10-12",
+  "runtimeUsage": "Wood, Stone and Pixel now use actual perspective wall/floor/ceiling planes. Each room plate appears once on the distant back wall. Wood samples walnut, Stone samples marble, and both sample the generated window at the side-wall opening. Pixel samples only the fine panel/window-free region of pixel-room; the rejected pixel atlas remains unused. These are generated appearance textures with baked illumination, not calibrated PBR maps. Cosmos is a native procedural volume with a spiral galaxy, turbulent emission, dark cavities and individual stars; the earlier generated Cosmos plate remains unused. Geometry is an original cached contour drawing.",
+  "roomPlateStatus": "All three reference-based plates generated, downloaded, preserved, optimized and visually inspected.",
+  "metadataUpdate": "Exact prompts/origins retained in PNG metadata or adjacent WebP .json sidecars; source originals unchanged."
 }
