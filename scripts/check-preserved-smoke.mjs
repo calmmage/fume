@@ -1,15 +1,22 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 
 // The user's accepted solver and accepted rays are separate reference points.
 const baseline = '1864ab79da40eb18006e4fc4794fda805eaaef6c';
 const original = (file) => execFileSync('git', ['show', `${baseline}:${file}`], { encoding: 'utf8' });
 const read = (file) => readFileSync(file, 'utf8');
-const files = ['fluid.ts', 'params.ts', 'scenes.ts', 'tools.ts'].map(f => `src/game/${f}`);
-files.push(...readdirSync('src/game/wgsl').filter(f => f.endsWith('.wgsl') && f !== 'composite.wgsl').map(f => `src/game/wgsl/${f}`));
+const files = ['fluid.ts', 'params.ts', 'scenes.ts'].map(f => `src/game/${f}`);
+// Protect every original simulation shader. New background-only shaders have no
+// baseline counterpart; they cannot replace any of these protected files.
+files.push(...execFileSync('git', ['ls-tree', '-r', '--name-only', baseline, 'src/game/wgsl'], { encoding: 'utf8' }).trim().split('\n').filter(f => f.endsWith('.wgsl') && !f.endsWith('/composite.wgsl')));
 for (const file of files) assert.equal(read(file), original(file), `Protected simulation changed: ${file}`);
+// The reported sideways Fire explicitly permits this single default-pose fix.
+const firePose = 'case "fire":\n      return { w: 64, h: 34, angle: 0, power: 1.15 };';
+const originalFirePose = 'case "fire":\n      return { w: 64, h: 34, angle: -Math.PI / 2, power: 1.15 };';
+assert.ok(read('src/game/tools.ts').includes(firePose), 'Missing reviewed upright Fire default');
+assert.equal(read('src/game/tools.ts').replace(firePose, originalFirePose), original('src/game/tools.ts'), 'Tool defaults outside the upright Fire pose changed');
 
 function body(source, marker) {
   const start = source.indexOf(marker);
@@ -70,4 +77,4 @@ for (const [name, expected] of Object.entries({
   const actual = createHash('sha256').update(body(shader, `fn ${name}(`)).digest('hex');
   assert.equal(actual, expected, `User-approved rays changed: ${name}`);
 }
-console.log(`${files.length} complete simulation files plus sim.ts outside explicit tool/empty-start/view-pointer changes, smoke shading, game timing and approved ray functions preserved.`);
+console.log(`${files.length} complete simulation files, tool defaults except the requested upright Fire pose, sim.ts outside explicit tool/empty-start/view-pointer changes, smoke shading, game timing and approved ray functions preserved.`);

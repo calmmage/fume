@@ -36,6 +36,15 @@ registerHooks({
 });
 const { FumeApp } = await import("../src/components/fume-app.tsx");
 
+test("initial UI opens directly on the canvas with audio off and no title gate", () => {
+  const markup = renderToString(createElement(FumeApp));
+  assert.match(markup, /aria-label="Smoke lab canvas"/);
+  assert.match(markup, /aria-label="Unmute"/);
+  assert.doesNotMatch(markup, /<h1\b|>Begin<|blow · drift · pop/);
+  assert.match(markup, /aria-label="Candle" aria-pressed="true"/);
+  assert.match(markup, /aria-label="Open simulation lab"/);
+});
+
 test("first render is identical with server defaults and persisted browser settings", (t) => {
   const previous = globalThis.localStorage;
   t.after(() => { globalThis.localStorage = previous; });

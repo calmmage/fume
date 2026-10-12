@@ -79,7 +79,7 @@ export function SimPanel({
         tabIndex={open ? -1 : 0}
         onClick={() => setOpen(true)}
         className={cn(
-          "absolute top-1/2 left-[max(1rem,env(safe-area-inset-left))] z-30 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/75 text-fg backdrop-blur-sm transition-opacity duration-200 ease-out hover:opacity-90 active:scale-[0.96]",
+          "absolute top-1/2 left-[max(1rem,env(safe-area-inset-left))] z-30 flex size-11 -translate-y-1/2 items-center justify-center rounded-[6px] border border-border bg-surface/75 text-fg backdrop-blur-sm transition-opacity duration-200 ease-out hover:opacity-90 active:scale-[0.96]",
           open ? "pointer-events-none opacity-0" : "opacity-100",
         )}
       >
@@ -201,16 +201,18 @@ export function SimPanel({
                   <Chip pressed={look.grain} onClick={() => onLook({ ...look, grain: !look.grain })}>
                     Grain
                   </Chip>
-                  <Chip pressed={look.dust} onClick={() => onLook({ ...look, dust: !look.dust })}>
-                    Spatial points
-                  </Chip>
+                  {(!look.room || look.roomStyle !== "cosmos") && (
+                    <Chip pressed={look.dust} onClick={() => onLook({ ...look, dust: !look.dust })}>
+                      Spatial points
+                    </Chip>
+                  )}
                 </div>
                 {look.room ? <>
                   <div className="mb-3 flex flex-wrap gap-1.5">
                     {ROOM_STYLES.map(({ id, label }) => (
                       <Chip key={id} pressed={look.roomStyle === id} onClick={() => onLook({ ...look, roomStyle: id })}>{label}</Chip>
                     ))}
-                    <button type="button" onClick={onResetView} className="min-h-11 px-3 font-sans text-xs text-fg underline underline-offset-4">Reset view</button>
+                    <button type="button" onClick={onResetView} className="min-h-11 rounded-[6px] px-3 font-sans text-xs text-fg underline underline-offset-4">Reset view</button>
                   </div>
                   <p className="mb-4 font-sans text-xs leading-relaxed text-muted">Small points stay fixed in the room as you move. These controls change the atmosphere, not the smoke.</p>
                 </> : null}
@@ -384,7 +386,7 @@ function Range({
         value={value}
         aria-label={label}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1 flex-1 accent-fg"
+        className="h-11 min-w-0 flex-1 accent-fg"
       />
       <span className="w-8 tabular-nums text-subtle">{shown}</span>
     </label>
@@ -409,7 +411,7 @@ function Chip({
       title={label}
       onClick={onClick}
       className={cn(
-        "min-h-11 rounded-full border px-3 font-sans text-xs",
+        "min-h-11 rounded-[6px] border px-3 font-sans text-xs",
         pressed ? "border-fg/30 bg-fg text-bg" : "border-border text-muted hover:text-fg",
       )}
     >
@@ -436,7 +438,7 @@ function IconBtn({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-opacity duration-150 hover:text-fg disabled:opacity-40"
+      className="flex size-11 shrink-0 items-center justify-center rounded-[6px] text-muted transition-opacity duration-150 hover:text-fg disabled:opacity-40"
     >
       {children}
     </button>
@@ -487,7 +489,7 @@ function ParamRow({
             title={`Randomize ${field.label}`}
             disabled={disabled}
             onClick={onRandomize}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-subtle transition-opacity duration-150 hover:text-fg disabled:opacity-40"
+            className="flex size-11 shrink-0 items-center justify-center rounded-[6px] text-subtle transition-opacity duration-150 hover:text-fg disabled:opacity-40"
           >
             <Dices className="size-3.5" />
           </button>
@@ -505,7 +507,7 @@ function ParamRow({
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
-            className="h-8 w-16 rounded-sm border border-border bg-bg/50 px-2 text-right font-mono text-xs tabular-nums text-fg outline-none transition-shadow duration-150 focus-visible:ring-2 focus-visible:ring-fg/30"
+            className="h-11 w-16 rounded-[6px] border border-border bg-bg/50 px-2 text-right font-mono text-xs tabular-nums text-fg outline-none transition-shadow duration-150 focus-visible:ring-2 focus-visible:ring-fg/30"
           />
         </div>
       </div>

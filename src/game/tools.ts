@@ -90,7 +90,7 @@ export function defaultSize(kind: GadgetKind) {
     case "vortex":
       return { w: 58, h: 58, angle: 0, power: 1.2 };
     case "fire":
-      return { w: 64, h: 34, angle: -Math.PI / 2, power: 1.15 };
+      return { w: 64, h: 34, angle: 0, power: 1.15 };
   }
 }
 

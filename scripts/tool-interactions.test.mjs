@@ -44,6 +44,7 @@ registerHooks({
 const sim = await import("../src/game/sim.ts");
 const { FumeGame } = await import("../src/game/fume-game.ts");
 const { ToolDock } = await import("../src/components/tool-dock.tsx");
+const { TOOLS } = await import("../src/game/tools.ts");
 
 function mountGame(t) {
   const win = new EventTarget();
@@ -133,6 +134,24 @@ test("held-effect toggle never changes placed tools or the activity of new copie
   assert.equal(first.on, true);
   assert.equal(second.on, true);
   assert.equal(world.gadgets.find((g) => g.bound).on, true);
+});
+
+test("Fire starts upright for the held preview, placed copies, and the Hearth scene", (t) => {
+  const { game, world, click } = mountGame(t);
+  game.setTool("fire");
+  const held = world.gadgets.find((g) => g.bound);
+  assert.equal(held.angle, 0, "the upward local flame must not receive a quarter-turn");
+  click(400, 300);
+  const placed = world.gadgets.find((g) => !g.bound && g.kind === "fire");
+  assert.equal(placed.angle, 0);
+  assert.deepEqual([placed.w, placed.h, placed.power], [64, 34, 1.15], "source size and strength remain unchanged");
+  sim.rotateGadget(world, held, 0.4);
+  click(650, 300);
+  assert.equal(world.gadgets.filter((g) => !g.bound && g.kind === "fire").at(-1).angle, 0.4, "deliberate rotation is still copied");
+  sim.applyScene(world, "hearth");
+  const hearth = world.gadgets.find((g) => !g.bound && g.kind === "fire");
+  assert.equal(hearth.angle, 0);
+  assert.deepEqual([hearth.w, hearth.h, hearth.power], [70, 38, 1.15]);
 });
 
 test("primary gadget clicks always place, including over a placed tool or a bubble", (t) => {
@@ -428,7 +447,7 @@ test("the focused Blow button supports keyboard hold, release, and focus loss", 
   const { game, world } = mountGame(t);
   game.setTool("wand");
   const dock = ToolDock({ tool: "wand", heldToolActive: true, gadgetCount: 0, blowing: false, coarse: false, onTool() {}, onHeldToolActive() {}, onClear() {}, onBlow: (on) => game.holdBlow(on) });
-  const button = dock.props.children.find((child) => child?.type === "button");
+  const button = dock.props.children.find((child) => child?.props["data-tool-action"])?.props.children;
   assert.ok(button, "Wand exposes the Blow button");
   for (const code of ["Space", "Enter"]) {
     const e = { code, preventDefault() {} };
@@ -453,6 +472,35 @@ test("dock exposes one held-effect switch, with no Follow/Pin placement modes", 
   assert.doesNotMatch(active, /Follow pointer|Place in the room|Pin ·/);
   const inactive = renderToStaticMarkup(createElement(ToolDock, { ...props, heldToolActive: false }));
   assert.match(inactive, /aria-checked="false"/);
-  const hand = renderToStaticMarkup(createElement(ToolDock, { ...props, tool: "hand" }));
-  assert.doesNotMatch(hand, /role="switch"/);
+  for (const tool of ["hand", "wand"]) {
+    const withoutHeldDevice = renderToStaticMarkup(createElement(ToolDock, { ...props, tool }));
+    assert.match(withoutHeldDevice, /role="switch" aria-label="Held tool active" aria-checked="false" disabled=""/);
+  }
+});
+
+test("every tool and held state retains the same dock slots and blow action footprint", () => {
+  const expectedLabels = ["Held tool active", ...TOOLS.map((tool) => tool.label), "Clear placed tools"];
+  let expectedStructure;
+  for (const { id: tool } of TOOLS) {
+    for (const heldToolActive of [false, true]) {
+      for (const coarse of [false, true]) {
+        for (const blowing of [false, true]) {
+          const dock = ToolDock({ tool, heldToolActive, coarse, blowing, gadgetCount: 0, onTool() {}, onHeldToolActive() {}, onClear() {}, onBlow() {} });
+          const [hint, grid, action] = dock.props.children;
+          const buttons = grid.props.children.flat(Infinity).filter(Boolean);
+          assert.deepEqual(buttons.map((button) => button.props["aria-label"]), expectedLabels);
+          assert.equal(buttons[0].props.disabled, tool === "hand" || tool === "wand");
+          assert.equal(action.props.children.type, "button");
+          assert.equal(action.props.children.props.children, "Hold to blow", "the label never changes width while held");
+          assert.equal(action.props.children.props.disabled, tool !== "wand");
+          assert.equal(action.props.children.props["aria-hidden"], tool !== "wand");
+          assert.equal(action.props.children.props.tabIndex, tool === "wand" ? 0 : -1);
+          const structure = [dock.props.className, hint.props.className, grid.props.className, action.props.className];
+          expectedStructure ??= structure;
+          assert.deepEqual(structure, expectedStructure, "tool/input/state changes must not alter layout containers");
+          assert.equal(hint.props.children.length, 2, "hints always reserve exactly two lines");
+        }
+      }
+    }
+  }
 });

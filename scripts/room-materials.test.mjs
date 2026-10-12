@@ -35,13 +35,14 @@ function fixture(t, respond) {
 const ok = () => ({ ok: true, blob: async () => ({}) });
 const settle = () => new Promise(setImmediate);
 
-test("Geometry stays network-free and failed environment maps retry with bounded requests", async (t) => {
+test("Geometry and native Cosmos stay network-free; failed environment maps retry with bounded requests", async (t) => {
   let attempts = 0;
   const { materials, requests, advance } = fixture(t, (url) => {
     if (url.includes("stone-room") && attempts++ === 0) return { ok: false, status: 503 };
     return ok();
   });
   materials.selectStyle("geometry");
+  materials.selectStyle("cosmos");
   await settle();
   assert.equal(requests.length, 0);
   materials.selectStyle("stone");
@@ -71,40 +72,40 @@ test("Geometry stays network-free and failed environment maps retry with bounded
 test("reselecting a style retries a failed map immediately", async (t) => {
   let fail = true;
   const { materials, requests } = fixture(t, () => fail ? { ok: false, status: 404 } : ok());
-  materials.selectStyle("cosmos");
+  materials.selectStyle("pixel");
   await settle();
   fail = false;
   materials.selectStyle("geometry");
-  materials.selectStyle("cosmos");
+  materials.selectStyle("pixel");
   await settle();
   assert.equal(requests.length, 2);
-  assert.equal(materials.bindings.environmentMap.label, "/styles/cosmos.webp");
+  assert.equal(materials.bindings.environmentMap.label, "/styles/pixel-room.webp");
 });
 
 test("persistent failure backs off, and old style results cannot overwrite the selected style", async (t) => {
   let finishStone;
   const { materials, requests, advance } = fixture(t, (url) => {
     if (url.includes("stone-room")) return new Promise((resolve) => { finishStone = resolve; });
-    if (url.includes("cosmos")) return { ok: false, status: 503 };
+    if (url.includes("pixel-room")) return { ok: false, status: 503 };
     return ok();
   });
   materials.selectStyle("stone");
-  materials.selectStyle("cosmos");
+  materials.selectStyle("pixel");
   finishStone(ok());
   await settle();
   assert.equal(materials.bindings.environmentMap.label, undefined);
   advance(1001);
-  materials.selectStyle("cosmos");
+  materials.selectStyle("pixel");
   await settle();
   advance(1001);
-  materials.selectStyle("cosmos");
-  assert.equal(requests.filter((url) => url.includes("cosmos")).length, 2);
+  materials.selectStyle("pixel");
+  assert.equal(requests.filter((url) => url.includes("pixel-room")).length, 2);
   advance(1000);
-  materials.selectStyle("cosmos");
+  materials.selectStyle("pixel");
   await settle();
-  assert.equal(requests.filter((url) => url.includes("cosmos")).length, 3);
+  assert.equal(requests.filter((url) => url.includes("pixel-room")).length, 3);
   materials.dispose();
   advance(100_000);
-  materials.selectStyle("cosmos");
-  assert.equal(requests.filter((url) => url.includes("cosmos")).length, 3);
+  materials.selectStyle("pixel");
+  assert.equal(requests.filter((url) => url.includes("pixel-room")).length, 3);
 });

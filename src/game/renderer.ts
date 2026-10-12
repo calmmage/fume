@@ -1,16 +1,21 @@
-import { effect, frame, init, storage, surface, type Effect, type Gpu, type StorageBuffer, type Surface } from "vgpu";
-import { buildFilmLut, FILM_LUT_SIZE } from "./film";
 import {
-  createFluid,
-  destroyFluid,
-  ensureFluidSize,
-  stepFluid,
-  type Fluid,
-} from "./fluid";
+  effect,
+  frame,
+  init,
+  storage,
+  surface,
+  type Effect,
+  type Gpu,
+  type StorageBuffer,
+  type Surface,
+} from "vgpu";
+import { buildFilmLut, FILM_LUT_SIZE } from "./film";
+import { createFluid, destroyFluid, ensureFluidSize, stepFluid, type Fluid } from "./fluid";
 import { interpolated, type Particle, type World } from "./sim";
 import { packGadgets } from "./tools";
 import { loadRoomMaterials } from "./materials";
 import { createContourRoom } from "./contour-room";
+import { Cosmos } from "./cosmos";
 import compositeWgsl from "./wgsl/composite.wgsl";
 
 const MAX_BALLS = 18;
@@ -40,6 +45,7 @@ export class Renderer {
     private particles: StorageBuffer,
     private materials: ReturnType<typeof loadRoomMaterials>,
     private contours: ReturnType<typeof createContourRoom>,
+    private cosmos: Cosmos,
   ) {}
 
   static async create(
@@ -73,7 +79,19 @@ export class Renderer {
     const composite = effect(gpu, compositeWgsl, { label: "fume-composite" });
     await composite.compile({ colors: [canvasSurface.format] });
     const materials = loadRoomMaterials(gpu);
-    return new Renderer(gpu, canvasSurface, fluid, composite, lut, particles, materials, createContourRoom(gpu));
+    const cosmos = new Cosmos(gpu);
+    await cosmos.compile();
+    return new Renderer(
+      gpu,
+      canvasSurface,
+      fluid,
+      composite,
+      lut,
+      particles,
+      materials,
+      createContourRoom(gpu),
+      cosmos,
+    );
   }
 
   resize(cssW: number, cssH: number, dpr: number) {
@@ -136,7 +154,14 @@ export class Renderer {
         n_gadgets: gadgets.count[0],
         palette: paletteIndex(world.look.palette),
         pixel: world.look.pixel ? 1 : 0,
-        depth: world.look.depth === "layers" ? 1 : world.look.depth === "lines" ? 2 : world.look.depth === "woods" ? 3 : 0,
+        depth:
+          world.look.depth === "layers"
+            ? 1
+            : world.look.depth === "lines"
+              ? 2
+              : world.look.depth === "woods"
+                ? 3
+                : 0,
         rays: world.look.rays === "shafts" ? 1 : world.look.rays === "sun" ? 2 : 0,
         parallax: [world.look.parallaxX, world.look.parallaxY],
         grain: world.look.grain ? 1 : 0,
@@ -148,8 +173,11 @@ export class Renderer {
         room_hw: world.look.roomW,
         room_hh: world.look.roomH,
         scene_z: world.look.sceneZ,
-        room_style: world.look.roomStyle === "geometry" || world.look.roomStyle === "cosmos" ? 2 : 0,
-        visual_style: ["geometry", "pixel", "cosmos", "stone", "wood"].indexOf(world.look.roomStyle),
+        room_style:
+          world.look.roomStyle === "geometry" || world.look.roomStyle === "cosmos" ? 2 : 0,
+        visual_style: ["geometry", "pixel", "cosmos", "stone", "wood"].indexOf(
+          world.look.roomStyle,
+        ),
         dust_on: world.look.dust ? 1 : 0,
         material_height: this.surface.size[1],
       },
@@ -159,12 +187,25 @@ export class Renderer {
       lut: this.lut,
       particles: this.particles,
       ...this.materials.bindings,
-      ...(world.look.room && world.look.roomStyle === "geometry" ? {
-        environmentMap: this.contours.update(world.w, world.h, this.dpr, world.look),
-      } : {}),
+      ...(world.look.room && world.look.roomStyle === "geometry"
+        ? {
+            environmentMap: this.contours.update(world.w, world.h, this.dpr, world.look),
+          }
+        : {}),
+      ...(world.look.room && world.look.roomStyle === "cosmos"
+        ? {
+            environmentMap: this.cosmos.update(
+              this.surface.size[0],
+              this.surface.size[1],
+              this.dpr,
+              world.look,
+            ),
+          }
+        : {}),
     });
 
     frame(this.gpu, (f) => {
+      if (world.look.room && world.look.roomStyle === "cosmos") this.cosmos.render(f);
       f.pass({ target: this.surface, clear: true }, this.composite);
     });
   }
@@ -172,6 +213,7 @@ export class Renderer {
   dispose() {
     this.materials.dispose();
     this.contours.dispose();
+    this.cosmos.dispose();
     destroyFluid(this.fluid);
     this.gpu.dispose();
   }
@@ -224,5 +266,8 @@ function shakeOffset(world: World) {
 }
 
 function noise1(t: number) {
-  return (Math.sin(t * 1.31) * 0.5 + Math.sin(t * 2.17 + 1.3) * 0.35 + Math.sin(t * 4.9) * 0.15) * 0.5 + 0.5;
+  return (
+    (Math.sin(t * 1.31) * 0.5 + Math.sin(t * 2.17 + 1.3) * 0.35 + Math.sin(t * 4.9) * 0.15) * 0.5 +
+    0.5
+  );
 }

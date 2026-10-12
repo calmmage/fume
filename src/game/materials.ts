@@ -98,7 +98,7 @@ export function loadRoomMaterials(gpu: Gpu) {
       retryAt = Math.min(retryAt, performance.now() + Math.min(30_000, 1000 * 2 ** retryAttempt));
     };
     const maps: ["environmentMap", string][] =
-      style === "geometry" ? [] : [["environmentMap", style === "cosmos" ? "cosmos" : `${style}-room`]];
+      style === "geometry" || style === "cosmos" ? [] : [["environmentMap", `${style}-room`]];
     for (const [key, name] of maps) {
       void get(name).then((map) => {
         if (map && !controller.signal.aborted && request === revision) bindings[key] = map;

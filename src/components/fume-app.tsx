@@ -15,7 +15,7 @@ const EMPTY: HudSnapshot = {
   pops: 0,
   blowing: false,
   bubbleCount: 0,
-  playing: false,
+  playing: true,
   floaters: [],
   width: 1,
   height: 1,
@@ -30,7 +30,6 @@ export function FumeApp() {
   const roomRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<FumeGame | null>(null);
   const [hud, setHud] = useState<HudSnapshot>(EMPTY);
-  const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
   const [coarse, setCoarse] = useState(false);
   // Match the server markup first; the mount effect applies saved settings
@@ -50,6 +49,8 @@ export function FumeApp() {
     gameRef.current = game;
     game.setParams(next);
     game.setLook(lookNext);
+    game.setMuted(true);
+    game.setPlaying(true);
     game.start();
     const mq = window.matchMedia("(pointer: coarse)");
     setCoarse(mq.matches);
@@ -87,17 +88,8 @@ export function FumeApp() {
   }, []);
 
   useEffect(() => {
-    gameRef.current?.setPlaying(playing);
-  }, [playing]);
-
-  useEffect(() => {
     gameRef.current?.setMuted(muted);
   }, [muted]);
-
-  const begin = () => {
-    setPlaying(true);
-    gameRef.current?.setPlaying(true);
-  };
 
   const onLook = (next: LookState) => {
     setLook(next);
@@ -155,13 +147,11 @@ export function FumeApp() {
         </span>
       ))}
 
-      {!playing ? <TitleScreen onBegin={begin} /> : null}
-
       <button
         type="button"
         aria-label={muted ? "Unmute" : "Mute"}
         onClick={() => setMuted((m) => !m)}
-        className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex size-11 items-center justify-center rounded-full border border-border bg-surface/70 text-fg backdrop-blur-sm transition-opacity duration-150 hover:opacity-90"
+        className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex size-11 items-center justify-center rounded-[6px] border border-border bg-surface/70 text-fg backdrop-blur-sm transition-opacity duration-150 hover:opacity-90"
       >
         {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
       </button>
@@ -191,39 +181,3 @@ export function FumeApp() {
     </main>
   );
 }
-
-function TitleScreen({ onBegin }: { onBegin: () => void }) {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pb-36">
-      <div className="flex max-w-lg flex-col items-center text-center">
-        <h1
-          className="fume-rise font-display text-[clamp(3.5rem,9vw,6rem)] leading-none font-normal tracking-[0.16em] text-fg"
-          style={{ animation: "fume-rise 500ms var(--ease-out) 60ms both" }}
-        >
-          FUME
-        </h1>
-        <p
-          className="fume-rise mt-4 font-display text-lg tracking-[0.16em] text-fg/80"
-          style={{ animation: "fume-rise 500ms var(--ease-out) 110ms both" }}
-        >
-          blow · drift · pop
-        </p>
-        <button
-          type="button"
-          className="fume-rise pointer-events-auto mt-8 min-h-11 rounded-full bg-fg px-8 py-3 font-sans text-sm font-medium text-bg transition-transform duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
-          style={{ animation: "fume-rise 500ms var(--ease-out) 180ms both" }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBegin();
-          }}
-        >
-          Begin
-        </button>
-      </div>
-    </div>
-  );
-}
-
-

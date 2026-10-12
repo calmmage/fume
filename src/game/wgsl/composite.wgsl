@@ -267,23 +267,63 @@ fn gadget_at(world: vec2f, i: i32) -> vec4f {
       col = mix(col, vec3f(0.16, 0.17, 0.18), mouth * 0.55);
     }
   } else if (abs(kind - KIND_FIRE) < 0.5) {
-    let base = sd_box(p - vec2f(0.0, hh * 0.28), vec2f(hw * 0.72, hh * 0.22)) - 1.2;
-    let logA = sd_capsule(p, vec2f(-hw * 0.35, hh * 0.18), vec2f(hw * 0.35, hh * 0.28), 2.4);
-    let logB = sd_capsule(p, vec2f(-hw * 0.28, hh * 0.34), vec2f(hw * 0.3, hh * 0.16), 2.1);
-    var flame = length((p - vec2f(0.0, -hh * 0.15)) / vec2f(0.55, 1.0)) - hh * 0.55;
-    flame += 0.7 * sin(config.time * 11.0 + pose.x * 0.03);
-    var tongue = length((p - vec2f(sin(config.time * 7.0) * 2.0, -hh * 0.55)) / vec2f(0.35, 1.15)) - hh * 0.28;
-    var rgb = vec3f(0.28, 0.16, 0.1);
-    var a = max(1.0 - smoothstep(0.0, 1.5, base), 1.0 - smoothstep(0.0, 1.4, min(logA, logB)));
-    let fa = (1.0 - smoothstep(0.0, 2.4, flame)) * on;
-    let ta = (1.0 - smoothstep(0.0, 1.8, tongue)) * on;
-    rgb = mix(rgb, vec3f(0.95, 0.42, 0.12), clamp(fa, 0.0, 1.0));
-    rgb = mix(rgb, vec3f(0.98, 0.78, 0.35), clamp(ta, 0.0, 1.0));
-    let dusk = select(1.0, 1.25, config.palette > 0.5);
-    let glow = exp(-dot(p, p) / 900.0) * on;
-    alpha = max(a, max(fa * 0.85, ta * 0.7));
-    alpha = max(alpha, glow * 0.28);
-    col = rgb + vec3f(0.55, 0.22, 0.05) * glow * dusk;
+    // Keep the detailed fire work local to its footprint, even with many tools.
+    if (abs(p.x) > hw * 1.4 || p.y < -hh * 2.2 || p.y > hh * 0.9) { return vec4f(0.0); }
+    let phase = pose.x * 0.013 + pose.y * 0.027;
+    let pulse = 0.86 + 0.09 * sin(config.time * 4.7 + phase) + 0.05 * sin(config.time * 8.3);
+    let glowP = (p - vec2f(0.0, -hh * 0.35)) / vec2f(hw * 0.85, hh * 1.35);
+    let glowA = exp(-dot(glowP, glowP) * 3.2) * 0.14 * on * pulse;
+    var fire = vec4f(vec3f(0.85, 0.19, 0.025) * glowA, glowA);
+
+    // Irregular coals sit below two crossed logs; their exposed centers breathe.
+    let bed = sd_ellipse(p - vec2f(0.0, hh * 0.35), vec2f(hw * 0.83, hh * 0.23));
+    let bedA = (1.0 - smoothstep(-0.5, 0.9, bed)) * 0.96;
+    let cellSize = vec2f(max(hw * 0.19, 3.0), max(hh * 0.18, 2.5));
+    let cell = floor(p / cellSize);
+    let coalSeed = hash21(cell + phase);
+    let coalP = fract(p / cellSize) - vec2f(0.42 + coalSeed * 0.16, 0.5);
+    let hot = exp(-dot(coalP, coalP) * 14.0) * (0.65 + 0.35 * sin(config.time * 2.3 + coalSeed * 9.0)) * on;
+    let coalCol = vec3f(0.055, 0.039, 0.029) + vec3f(0.9, 0.16, 0.015) * hot;
+    fire = over(vec4f(coalCol * bedA, bedA), fire);
+    for (var logIndex = 0; logIndex < 2; logIndex++) {
+      let a = select(vec2f(-hw * 0.72, hh * 0.19), vec2f(-hw * 0.56, hh * 0.45), logIndex == 1);
+      let b = select(vec2f(hw * 0.57, hh * 0.47), vec2f(hw * 0.73, hh * 0.16), logIndex == 1);
+      let radius = max(hh * 0.14, 1.5);
+      let axis = normalize(b - a);
+      let along = dot(p - a, axis);
+      let across = dot(p - a, vec2f(-axis.y, axis.x));
+      let logA = 1.0 - smoothstep(-0.4, 0.9, sd_capsule(p, a, b, radius));
+      let grain = 0.7 + 0.3 * sin(along * 1.6 + sin(across * 2.1));
+      let rim = 1.0 - smoothstep(0.15, 1.15, abs(across + radius * 0.68));
+      let crack = pow(max(0.0, sin(along * 0.83 + f32(logIndex) * 2.7)), 12.0);
+      var logCol = vec3f(0.12, 0.071, 0.039) * grain * (0.65 + 0.35 * (1.0 - smoothstep(-radius, radius, across)));
+      logCol += vec3f(0.76, 0.21, 0.026) * (rim * 0.65 + crack * 0.32) * on * pulse;
+      fire = over(vec4f(logCol * logA, logA), fire);
+    }
+
+    // Five tapered tongues curl upward at different rates. Travelling ripples
+    // carry detail from the roots to the tips, with warm edges and hot cores.
+    for (var k = 0; k < 5; k++) {
+      let id = f32(k);
+      let seed = phase + id * 2.37;
+      let central = 1.0 - abs(id - 2.0) * 0.22;
+      let height = hh * (1.5 * central + 0.2 * sin(config.time * (3.1 + id * 0.31) + seed) + 0.12 * sin(config.time * 6.7 + seed * 1.3));
+      let t = (hh * 0.2 - p.y) / max(height, 1.0);
+      let rise = clamp(t, 0.0, 1.0);
+      let root = (id - 2.0) * hw * 0.24;
+      let sway = hw * rise * rise * (0.11 * sin(config.time * 3.8 + seed) + 0.075 * sin(rise * 9.0 - config.time * 5.5 + seed));
+      let width = max(0.0, 1.0 - rise) * hw * (0.145 + central * 0.045) * (0.87 + 0.13 * sin(rise * 16.0 - config.time * 7.0 + seed));
+      let distance = abs(p.x - root - sway);
+      let vertical = smoothstep(-0.06, 0.05, t) * (1.0 - smoothstep(0.9, 1.02, t));
+      let tongueA = (1.0 - smoothstep(max(0.0, width - 0.65), width + 0.65, distance)) * vertical * on * 0.88;
+      let core = clamp(1.0 - distance / max(width, 0.1), 0.0, 1.0);
+      let heat = core * (1.0 - smoothstep(0.18, 0.95, rise));
+      var flameCol = mix(vec3f(0.98, 0.19, 0.018), vec3f(1.0, 0.68, 0.16), core);
+      flameCol = mix(flameCol, vec3f(1.0, 0.95, 0.71), heat * heat * 0.88);
+      fire = over(vec4f(flameCol * tongueA, tongueA), fire);
+    }
+    alpha = fire.a;
+    col = fire.rgb / max(alpha, 0.0001);
   } else if (abs(kind - KIND_VORTEX) < 0.5) {
     let r = length(p);
     let th = atan2(p.y, p.x);
@@ -678,6 +718,12 @@ fn march_room(uv: vec2f) -> RoomView {
     // Matches screenToWorld. Shared overscan keeps the visible corners inside
     // the fluid domain throughout the full bounded pan range.
     let offset = vec2f(tanh(look.x) * 0.11, tanh(look.y * 2.0) * 0.08);
+    if (config.visual_style > 1.5 && config.visual_style < 2.5) {
+      // Cosmos is already projected from a 3D star volume at surface resolution.
+      // The live fluid plane keeps the existing pointer/bubble mapping.
+      let col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
+      return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
+    }
     let col = image_room(uv, offset) + dust_motes(ro, rd, z1) + volume_light(ro, rd, z1);
     return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
   }
