@@ -1,6 +1,11 @@
 import { compute, storage, type Compute, type Gpu, type StorageBuffer } from "vgpu";
 import type { Fluid } from "./fluid";
 import type { World } from "./sim";
+import {
+  captureSessionWork,
+  releaseSessionBuffers,
+  type SessionBuffers,
+} from "./session-allocation";
 import smokeProbeWgsl from "./wgsl/smoke-probe.wgsl";
 
 export interface ProbeTarget {
@@ -29,26 +34,35 @@ export class SmokeProbe {
   private last = -Infinity;
   private inFlight = false;
   private disposed = false;
-  private creation: Promise<{ message: string } | null>;
+  private creation: Promise<string | null>;
+  private buffers: SessionBuffers = new Set();
 
   constructor(private gpu: Gpu) {
-    gpu.gpu.pushErrorScope("validation");
-    try {
-      this.pass = compute(gpu, smokeProbeWgsl, { label: "challenge-smoke-probe" });
-      this.result = storage(gpu, 16, "read-write");
-    } finally {
-      // A failed optional measurement pipeline must not reach the renderer's
-      // global GPU error handler and discard the parked playground.
-      this.creation = gpu.gpu
-        .popErrorScope()
-        .catch((error: unknown) => ({ message: String(error) }));
+    const creation = captureSessionWork(gpu, this.buffers, () => ({
+      pass: compute(gpu, smokeProbeWgsl, { label: "challenge-smoke-probe" }),
+      result: storage(gpu, 16, "read-write"),
+    }));
+    this.creation = creation.checked;
+    if (!creation.value || creation.error) {
+      releaseSessionBuffers(this.buffers);
+      throw new Error(creation.error ?? "Smoke measurement could not be allocated.");
     }
+    this.pass = creation.value.pass;
+    this.result = creation.value.result;
   }
 
   configure(session: ProbeSession | null) {
     this.revision += 1;
     this.session = session;
     this.last = -Infinity;
+    if (!session) return;
+    const revision = this.revision;
+    // Constructor failures must surface even before the first sample/readback.
+    void this.creation.then((error) => {
+      if (!error || this.disposed || revision !== this.revision) return;
+      this.configure(null);
+      session.onError(error);
+    });
   }
 
   sample(fluid: Fluid, world: World, at = performance.now() / 1000) {
@@ -57,10 +71,7 @@ export class SmokeProbe {
     const revision = this.revision;
     this.last = at;
     this.inFlight = true;
-    const device = this.gpu.gpu;
-    device.pushErrorScope("validation");
-    let read: Promise<ArrayBuffer>;
-    try {
+    const work = captureSessionWork(this.gpu, this.buffers, () => {
       const target = session.target;
       this.pass
         .set({
@@ -74,19 +85,17 @@ export class SmokeProbe {
         })
         .dispatch(1);
       // read() submits the copy now; later solver steps cannot change this sample.
-      read = this.result.read();
-    } catch (error) {
-      read = Promise.reject(error);
-    }
-    const validation = device.popErrorScope();
-    void Promise.allSettled([read, validation, this.creation])
+      return this.result.read();
+    });
+    const read = work.value ?? Promise.reject(new Error(work.error ?? "Smoke measurement failed."));
+    void Promise.allSettled([read, work.checked, this.creation])
       .then(([readback, validation, creation]) => {
         // Even a validation failure waits for the pending read to settle before
         // allowing another attempt to reuse the reduction buffer.
         if (readback.status === "rejected") throw readback.reason;
         for (const check of [validation, creation]) {
           if (check.status === "rejected") throw check.reason;
-          if (check.value) throw new Error(check.value.message);
+          if (check.value) throw new Error(check.value);
         }
         if (this.disposed || revision !== this.revision) return;
         const values = new Float32Array(readback.value);
@@ -109,5 +118,6 @@ export class SmokeProbe {
     this.disposed = true;
     this.configure(null);
     (this.result as StorageBuffer & { destroy(): void }).destroy();
+    releaseSessionBuffers(this.buffers);
   }
 }

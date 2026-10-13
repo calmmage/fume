@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, X } from "lucide-react";
 import { FumeGame, type HudSnapshot } from "@/game/fume-game";
 import { paintLayerRoom } from "@/game/layer-room";
 import {
@@ -34,11 +34,45 @@ const EMPTY: HudSnapshot = {
   width: 1,
   height: 1,
   glError: null,
+  sessionNotice: null,
   tool: "candle",
   heldToolActive: true,
   gadgetCount: 0,
   challenge: null,
 };
+
+export function SessionNotice({
+  notice,
+  onDismiss,
+}: {
+  notice: string | null;
+  onDismiss: () => void;
+}) {
+  if (notice === null) return null;
+  return (
+    <div
+      data-session-notice
+      className="absolute top-[calc(max(1rem,env(safe-area-inset-top))+3.75rem)] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-2 rounded-[6px] border border-border bg-surface/95 p-2 pl-4 text-fg backdrop-blur-sm"
+    >
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="min-w-0 flex-1 py-3 font-sans text-xs leading-5"
+      >
+        {notice}
+      </p>
+      <button
+        type="button"
+        aria-label="Dismiss message"
+        onClick={onDismiss}
+        className="flex size-11 shrink-0 items-center justify-center rounded-[6px] text-fg hover:bg-fg/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+      >
+        <X aria-hidden className="size-4" />
+      </button>
+    </div>
+  );
+}
 
 export function FumeApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,6 +151,12 @@ export function FumeApp() {
   }, [muted]);
 
   useEffect(() => {
+    if (!hud.sessionNotice) return;
+    setChallengesOpen(false);
+    setChallengeError(null);
+  }, [hud.sessionNotice]);
+
+  useEffect(() => {
     if (
       !challengeId ||
       challengeStatus !== "complete" ||
@@ -148,8 +188,16 @@ export function FumeApp() {
   };
 
   const onChallenge = (id: ChallengeId) => {
-    if (!gameRef.current?.enterChallenge(id, loadPreset())) {
-      setChallengeError("The smoke is still getting ready. Try this challenge again in a moment.");
+    const game = gameRef.current;
+    if (!game?.enterChallenge(id, loadPreset())) {
+      if (game?.getSessionNotice()) {
+        setChallengesOpen(false);
+        setChallengeError(null);
+      } else {
+        setChallengeError(
+          "The smoke is still getting ready. Try this challenge again in a moment.",
+        );
+      }
       return;
     }
     setChallengeError(null);
@@ -163,11 +211,17 @@ export function FumeApp() {
   };
 
   const onRetryChallenge = () => {
-    setChallengeError(
-      gameRef.current?.retryChallenge()
-        ? null
-        : "This challenge could not restart. Return to the playground and try again.",
-    );
+    const game = gameRef.current;
+    if (game?.retryChallenge()) {
+      setChallengeError(null);
+    } else if (game?.getSessionNotice()) {
+      setChallengesOpen(false);
+      setChallengeError(null);
+    } else {
+      setChallengeError(
+        "This challenge could not restart. Return to the playground and try again.",
+      );
+    }
   };
 
   const nextChallenge = challenge
@@ -196,6 +250,11 @@ export function FumeApp() {
           </p>
         </div>
       ) : null}
+
+      <SessionNotice
+        notice={hud.sessionNotice}
+        onDismiss={() => gameRef.current?.dismissSessionNotice()}
+      />
 
       {hud.floaters.map((f) => (
         <span

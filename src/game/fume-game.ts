@@ -69,6 +69,7 @@ export interface HudSnapshot {
   width: number;
   height: number;
   glError: string | null;
+  sessionNotice: string | null;
   tool: ToolKind;
   heldToolActive: boolean;
   gadgetCount: number;
@@ -99,6 +100,7 @@ export class FumeGame {
   private onHud: HudListener;
   private lastHud = 0;
   glError: string | null = null;
+  private sessionNotice: string | null = null;
   private disposed = false;
   private parked: { world: World; acc: number } | null = null;
   private challenge: ChallengeSession | null = null;
@@ -238,18 +240,27 @@ export class FumeGame {
       error: null,
     };
     const probe = this.challengeProbe(attempt);
+    let allocationError: string | null = null;
+    const onAllocationFailure = (message: string) => {
+      allocationError = message;
+      if (this.disposed || this.challenge !== attempt) return;
+      this.leaveChallenge();
+      this.showAllocationNotice(message);
+    };
     const replacing = this.challenge !== null;
     const entered = replacing
-      ? this.renderer.replaceSession(setup.world, probe)
-      : this.renderer.enterSession(setup.world, probe);
+      ? this.renderer.replaceSession(setup.world, probe, onAllocationFailure)
+      : this.renderer.enterSession(setup.world, probe, onAllocationFailure);
     if (!entered) {
       if (replacing) this.leaveChallenge();
+      this.showAllocationNotice(allocationError);
       return false;
     }
     this.onBlur();
     if (!this.parked) this.parked = { world: this.world, acc: this.acc };
     this.world = setup.world;
     this.challenge = attempt;
+    this.sessionNotice = null;
     this.logicalSizeLocked = true;
     this.acc = 0;
     this.last = performance.now();
@@ -264,6 +275,22 @@ export class FumeGame {
       this.challenge.setup.definition.id,
       this.challenge.setup.world.params,
     );
+  }
+
+  dismissSessionNotice(): void {
+    this.sessionNotice = null;
+    this.emitHud();
+  }
+
+  getSessionNotice(): string | null {
+    return this.sessionNotice;
+  }
+
+  private showAllocationNotice(message: string | null) {
+    const reason =
+      message && /memory/i.test(message) ? " There was not enough graphics memory." : "";
+    this.sessionNotice = `The challenge could not open.${reason} Your playground is still here, including its smoke. Try again or continue playing.`;
+    this.emitHud();
   }
 
   leaveChallenge(): void {
@@ -807,6 +834,7 @@ export class FumeGame {
       width: this.world.w,
       height: this.world.h,
       glError: this.glError,
+      sessionNotice: this.sessionNotice,
       tool: this.world.tool,
       heldToolActive: this.world.heldToolActive,
       gadgetCount: this.world.gadgets.filter((g) => !g.bound).length,

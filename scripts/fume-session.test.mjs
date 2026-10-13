@@ -12,8 +12,8 @@ loadSessionModules(
       "fume-game.ts:./renderer",
       `export class Renderer {
     static async create(_canvas, onGpuError) { const renderer = new Renderer(); renderer.onGpuError = onGpuError; return renderer; }
-    resize() {} draw() {} dispose() {} enterSession(world,probe) { this.world=world; this.probe=probe; return !this.fail; }
-    replaceSession(world,probe) { return this.enterSession(world,probe); } restoreSession() { this.restored=true; }
+    resize() {} draw() {} dispose() {} enterSession(world,probe,onAllocationFailure) { this.world=world; this.probe=probe; this.onAllocationFailure=onAllocationFailure; return !this.fail; }
+    replaceSession(world,probe,onAllocationFailure) { return this.enterSession(world,probe,onAllocationFailure); } restoreSession() { this.restored=true; }
   }`,
     ],
   ]),
@@ -339,4 +339,31 @@ test("projected target circles and points round-trip under both aspect ratios an
     const top = sessionPoint(world, view, { x: point.x, y: point.y - point.r });
     assert.ok(Math.abs(screen.y - top.y - screen.r) < 1e-8);
   }
+});
+
+test("asynchronous allocation rollback restores CPU session and reports a dismissible nonfatal notice", async (t) => {
+  const { game, hud } = await mount(t);
+  const world = game.world;
+  game.acc = 0.004;
+  world.time = 32;
+  game.enterChallenge("draft", world.params);
+  const saved = structuredClone({ ...world, onPop: undefined });
+  const stale = game.renderer.onAllocationFailure;
+  game.retryChallenge();
+  stale("obsolete allocation failure");
+  assert.notEqual(game.world, world);
+  const live = game.renderer.onAllocationFailure;
+  live("out of memory allocating buffer");
+  assert.equal(game.world, world);
+  assert.equal(game.acc, 0.004);
+  assert.deepEqual(structuredClone({ ...world, onPop: undefined }), saved);
+  assert.equal(hud().challenge, null);
+  assert.equal(hud().glError, null);
+  assert.match(hud().sessionNotice, /graphics memory.*including its smoke/i);
+  game.dismissSessionNotice();
+  assert.equal(hud().sessionNotice, null);
+  assert.equal(game.enterChallenge("draft", world.params), true);
+  game.leaveChallenge();
+  live("late allocation failure after return");
+  assert.equal(hud().sessionNotice, null);
 });

@@ -15,7 +15,7 @@ loadSessionModules(
 );
 const { SmokeProbe } = await import("../src/game/smoke-probe.ts");
 
-function fixture() {
+function fixture(creationFault = null) {
   const pending = [];
   let dispatches = 0;
   let allocated = 0;
@@ -40,7 +40,19 @@ function fixture() {
       };
     },
   };
-  const gpu = { gpu: { pushErrorScope() {}, popErrorScope: async () => null } };
+  const scopes = [];
+  const gpu = {
+    device: { createBuffer() {} },
+    gpu: {
+      pushErrorScope(filter) {
+        scopes.push(filter);
+      },
+      popErrorScope: async () => {
+        const filter = scopes.pop();
+        return filter === creationFault ? { message: `probe ${filter} failure` } : null;
+      },
+    },
+  };
   const probe = new SmokeProbe(gpu);
   const world = { w: 1000, h: 700 };
   const fluid = {
@@ -148,4 +160,16 @@ test("readback failure disables measurement safely and can be retried; disposal 
   await f.settle(1);
   assert.equal(f.samples.length, 0);
   assert.equal(f.stats().destroyed, 1);
+});
+
+test("constructor validation, OOM and internal failures report without waiting for a sample", async () => {
+  for (const filter of ["validation", "out-of-memory", "internal"]) {
+    const f = fixture(filter);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(f.errors, [`probe ${filter} failure`]);
+    f.probe.sample(f.fluid, f.world, 1);
+    assert.equal(f.stats().dispatches, 0);
+    assert.equal(f.pending.length, 0);
+    f.probe.dispose();
+  }
 });

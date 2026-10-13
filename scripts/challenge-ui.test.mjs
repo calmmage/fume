@@ -42,7 +42,7 @@ registerHooks({
 const { CHALLENGES } = await import("../src/game/challenges.ts");
 const { ChallengeChoices, ChallengePanel, ChallengeOverlay } =
   await import("../src/components/challenge-panel.tsx");
-const { FumeApp } = await import("../src/components/fume-app.tsx");
+const { FumeApp, SessionNotice } = await import("../src/components/fume-app.tsx");
 const noop = () => {};
 const fixedSource = {
   id: 1,
@@ -110,7 +110,50 @@ test("playground remains the direct entry with Candle, audio off, and a discreet
   assert.match(markup, /aria-label="Candle" aria-pressed="true"/);
   assert.match(markup, /aria-label="Unmute"/);
   assert.match(markup, /aria-label="Choose a smoke challenge"/);
-  assert.doesNotMatch(markup, /<h1\b|>Begin<|data-challenge-controls|data-challenge-overlay/);
+  assert.doesNotMatch(
+    markup,
+    /<h1\b|>Begin<|data-challenge-controls|data-challenge-overlay|data-session-notice|Dismiss message/,
+  );
+});
+
+test("rollback notice displays the supplied recovery message and has a reachable manual dismiss action", () => {
+  const message = "This challenge could not start. Your playground has been restored.";
+  let dismissals = 0;
+  const notice = SessionNotice({
+    notice: message,
+    onDismiss: () => {
+      dismissals++;
+    },
+  });
+  const markup = renderToStaticMarkup(notice);
+  assert.match(markup, /data-session-notice="true"/);
+  assert.ok(markup.includes(message));
+  assert.match(markup, /role="status" aria-live="polite" aria-atomic="true"/);
+  const dismissMarkup = button(markup, "Dismiss message");
+  assert.doesNotMatch(dismissMarkup, /disabled=""|tabindex="-1"/);
+  assert.match(dismissMarkup, /size-11 shrink-0.*rounded-\[6px\]/);
+  assert.match(markup, /absolute top-.*max-w-md/);
+  assert.doesNotMatch(markup, /role="dialog"|data-challenge-controls/);
+  const dismiss = notice.props.children.find(
+    (child) => child.props?.["aria-label"] === "Dismiss message",
+  );
+  assert.equal(dismissals, 0, "the notice never dismisses itself during rendering");
+  dismiss.props.onClick();
+  assert.equal(dismissals, 1, "manual dismiss invokes the runtime callback");
+});
+
+test("null session notice contributes no markup or action to the normal playground", () => {
+  let dismissals = 0;
+  const markup = renderToStaticMarkup(
+    createElement(SessionNotice, {
+      notice: null,
+      onDismiss: () => {
+        dismissals++;
+      },
+    }),
+  );
+  assert.equal(markup, "");
+  assert.equal(dismissals, 0);
 });
 
 test("all three choices remain playable before and after any completion", () => {

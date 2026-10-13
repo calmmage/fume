@@ -10,6 +10,11 @@ import { loadSessionModules } from "./session-test-loader.mjs";
 const gpu = await init();
 const errors = [];
 gpu.onError((error) => errors.push(error.message));
+const nativeErrors = [];
+gpu.gpu.addEventListener("uncapturederror", (event) => {
+  nativeErrors.push(event.error.message);
+  event.preventDefault();
+});
 try {
   const dir = new URL("../src/game/wgsl/", import.meta.url);
   const shaders = new Map();
@@ -88,6 +93,7 @@ try {
   }
   probe.dispose();
   dye.destroy();
+  const probeFailureSafety = await checkProbeSafety(gpu, SmokeProbe, world, target);
   const overhead = await benchmarkProbe(gpu, SmokeProbe, createWorld);
 
   const original = createFluid(gpu, width, height, true);
@@ -132,11 +138,13 @@ try {
   assert.equal(renderer.enterSession(setup.world, config), true);
   const first = renderer.fluid;
   assert.notEqual(first, original);
+  await readySession(renderer, setup.world);
   for (let i = 0; i < 4; i++) stepFluid(first, setup.world, 1 / 60);
   renderer.resize(390, 844, 2);
   assert.equal(await hash(), before);
   assert.equal(renderer.replaceSession(setup.world, config), true);
   assert.equal(renderer.fluid, first, "retry reuses its sole challenge allocation and passes");
+  await waitFor(() => renderer.pendingSession?.phase === "first-use", "retry allocation checks");
   for (const buffer of [
     first.velocity.read,
     first.velocity.write,
@@ -153,6 +161,7 @@ try {
       "retry clears both ping-pong halves and all scratch fields",
     );
   }
+  await readySession(renderer, setup.world);
   stepFluid(renderer.fluid, setup.world, 1 / 60);
   renderer.restoreSession();
   assert.equal(renderer.fluid, original);
@@ -161,6 +170,15 @@ try {
   assert.deepEqual([...renderer.fluid.seeded], [481]);
   const after = await hash();
   assert.equal(after, before);
+  const allocationSafety = await checkAllocationSafety({
+    gpu,
+    renderer,
+    setup,
+    config,
+    original,
+    buffers,
+    hash,
+  });
   // Exercise the actual draw hook after return. The minimal presentation pass
   // keeps this focused on dispatch behavior rather than background assets.
   const image = renderTarget(gpu, { size: [width, height], format: "rgba8unorm" });
@@ -183,13 +201,17 @@ try {
   renderer.draw(world, 0, 1 / 60);
   renderer.draw(world, 0, 1 / 60);
   assert.equal(ordinaryProbeCalls, 0, "returned playground must not even call the probe");
+  for (const check of allocationSafety.dispatchChecks) check();
   await gpu.settled();
   assert.deepEqual(errors, []);
+  assert.deepEqual(nativeErrors, []);
   const receipt = {
     measuredAt: new Date().toISOString(),
     adapter: gpu.adapter,
     measurements,
     overhead,
+    allocationSafety: allocationSafety.receipt,
+    probeFailureSafety,
     returnedPlayground: { drawCalls: 2, probeCalls: ordinaryProbeCalls },
     parked: {
       bytes: buffers.reduce((sum, buffer) => sum + buffer.size, 0),
@@ -199,6 +221,7 @@ try {
       resizeAndRetryPreserved: true,
     },
     gpuErrors: errors,
+    nativeGpuErrors: nativeErrors,
   };
   if (process.argv[2]) writeFileSync(process.argv[2], JSON.stringify(receipt, null, 2) + "\n");
   console.log(
@@ -217,6 +240,240 @@ try {
   renderer.dispose();
 } finally {
   gpu.dispose();
+}
+
+async function waitFor(check, label) {
+  const deadline = performance.now() + 10000;
+  while (!check()) {
+    assert.ok(performance.now() < deadline, `Timed out: ${label}`);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
+async function readySession(renderer, world) {
+  await waitFor(() => renderer.pendingSession?.phase !== "allocating", "allocation validation");
+  if (renderer.pendingSession?.phase === "first-use") renderer.draw(world, 0, 1 / 60);
+  await waitFor(() => renderer.pendingSession === null, "first-use validation");
+  assert.ok(renderer.parkedFluid, "successful validation must retain the parked field");
+}
+
+async function checkAllocationSafety({ gpu, renderer, setup, config, original, buffers, hash }) {
+  const native = gpu.gpu;
+  const receipt = [];
+  const dispatchChecks = [];
+  for (const mode of [
+    "native-invalid-buffer",
+    "injected-oom-result",
+    "native-invalid-first-use-buffer",
+    "partial-synchronous-failure",
+  ]) {
+    const before = await hash();
+    const failures = [];
+    const handles = [];
+    const originalCreate = native.createBuffer;
+    const originalPush = native.pushErrorScope;
+    const originalPop = native.popErrorScope;
+    const scopes = [];
+    let injected = false,
+      creations = 0;
+    function injectInvalidBuffer() {
+      native.createBuffer = function (descriptor) {
+        creations++;
+        if (mode === "partial-synchronous-failure" && creations === 4)
+          throw new Error("Injected synchronous allocation failure after three buffers");
+        if (!injected && mode !== "partial-synchronous-failure") {
+          injected = true;
+          // 16 bytes, deliberately invalid MAP_READ|STORAGE usage. This tests
+          // native asynchronous validation without exhausting memory.
+          return originalCreate.call(this, { ...descriptor, size: 16, usage: 1 | 128 });
+        }
+        return originalCreate.call(this, descriptor);
+      };
+    }
+    const createCore = gpu.device.createBuffer;
+    gpu.device.createBuffer = function (options) {
+      const buffer = createCore.call(this, options);
+      handles.push(buffer);
+      return buffer;
+    };
+    const onFailure = (message) => {
+      assert.equal(renderer.fluid, original, "restore must precede failure callback");
+      failures.push(message);
+    };
+    let candidate;
+    let dispatches = 0;
+    try {
+      if (mode === "native-invalid-buffer" || mode === "partial-synchronous-failure")
+        injectInvalidBuffer();
+      if (mode === "injected-oom-result") {
+        native.pushErrorScope = function (filter) {
+          scopes.push(filter);
+          return originalPush.call(this, filter);
+        };
+        native.popErrorScope = function () {
+          const filter = scopes.pop();
+          const actual = originalPop.call(this);
+          return filter === "out-of-memory"
+            ? actual.then(
+                (error) =>
+                  error ?? { message: "Injected GPUOutOfMemoryError: candidate allocation failed" },
+              )
+            : actual;
+        };
+      }
+      const entered = renderer.enterSession(setup.world, config, onFailure);
+      assert.equal(entered, mode !== "partial-synchronous-failure");
+      candidate = entered ? renderer.fluid : null;
+      if (candidate) {
+        for (const pass of Object.values(candidate.passes)) {
+          const dispatch = pass.dispatch;
+          pass.dispatch = function (...args) {
+            dispatches++;
+            return dispatch.apply(this, args);
+          };
+        }
+        renderer.draw(setup.world, 0, 1 / 60);
+        assert.equal(dispatches, 0, "pending allocation cannot dispatch");
+      }
+      native.createBuffer = originalCreate;
+      native.pushErrorScope = originalPush;
+      native.popErrorScope = originalPop;
+      if (mode === "native-invalid-first-use-buffer") {
+        await waitFor(
+          () => renderer.pendingSession?.phase === "first-use",
+          "first-use fault setup",
+        );
+        injectInvalidBuffer();
+        renderer.draw(setup.world, 0, 1 / 60);
+        native.createBuffer = originalCreate;
+      }
+      await waitFor(() => failures.length === 1, `${mode} rollback`);
+      assert.equal(renderer.fluid, original);
+      assert.equal(renderer.fluid.velocity.read, buffers[0]);
+      assert.equal(renderer.fluid.pressure.read, buffers[4]);
+      assert.deepEqual([...renderer.fluid.seeded], [481]);
+      assert.equal(renderer.pendingSession, null);
+      assert.equal(renderer.probeSession, null);
+      assert.ok(
+        handles.length > 0 && handles.every((buffer) => buffer.destroyed),
+        "all partial and lazy candidate allocations must be released",
+      );
+      const after = await hash();
+      assert.equal(after, before, "rollback must preserve every original byte before resumed step");
+      const dispatchedAtRollback = dispatches;
+      dispatchChecks.push(() =>
+        assert.equal(
+          dispatches,
+          dispatchedAtRollback,
+          "failed candidate must never dispatch after rollback",
+        ),
+      );
+      receipt.push({
+        fault: mode,
+        nativeValidation: mode.startsWith("native-"),
+        hardwareMemoryExhaustion: false,
+        error: failures[0],
+        buffersReleased: handles.length,
+        candidateDispatchesBeforeRollback: dispatches,
+        candidateDispatchesAfterRollback: 0,
+        ownerHashBefore: before,
+        ownerHashAfterRollback: after,
+        originalBuffersParitySeededIdsPreserved: true,
+      });
+    } finally {
+      native.createBuffer = originalCreate;
+      native.pushErrorScope = originalPush;
+      native.popErrorScope = originalPop;
+      gpu.device.createBuffer = createCore;
+      renderer.restoreSession();
+    }
+  }
+  return { receipt, dispatchChecks };
+}
+
+async function checkProbeSafety(gpu, SmokeProbe, world, target) {
+  const receipt = [];
+  const native = gpu.gpu;
+  const dye = storage(gpu, 32 * 20 * 16, "read-write");
+  dye.write(new Float32Array(32 * 20 * 4).fill(0.1));
+  const fluid = { dyeW: 32, dyeH: 20, dye: { read: dye } };
+  for (const mode of [
+    "native-invalid-probe-result",
+    "native-invalid-probe-uniform",
+    "injected-probe-oom",
+  ]) {
+    const originalCreate = native.createBuffer;
+    const originalPush = native.pushErrorScope;
+    const originalPop = native.popErrorScope;
+    let probe;
+    const failures = [],
+      samples = [],
+      scopes = [];
+    let injected = false;
+    const installInvalid = () => {
+      native.createBuffer = function (descriptor) {
+        if (!injected) {
+          injected = true;
+          return originalCreate.call(this, { ...descriptor, size: 16, usage: 1 | 128 });
+        }
+        return originalCreate.call(this, descriptor);
+      };
+    };
+    try {
+      if (mode === "native-invalid-probe-result") installInvalid();
+      probe = new SmokeProbe(gpu);
+      native.createBuffer = originalCreate;
+      probe.configure({
+        target,
+        onSample: (sample) => samples.push(sample),
+        onError: (error) => failures.push(error),
+      });
+      if (mode !== "native-invalid-probe-result") {
+        // Let construction finish first; these faults exercise sample-time work.
+        await new Promise((resolve) => setImmediate(resolve));
+        if (mode === "native-invalid-probe-uniform") installInvalid();
+        else {
+          native.pushErrorScope = function (filter) {
+            scopes.push(filter);
+            return originalPush.call(this, filter);
+          };
+          native.popErrorScope = function () {
+            const filter = scopes.pop();
+            const actual = originalPop.call(this);
+            return filter === "out-of-memory"
+              ? actual.then((error) => error ?? { message: "Injected probe GPUOutOfMemoryError" })
+              : actual;
+          };
+        }
+        probe.sample(fluid, world, 1);
+      }
+      native.createBuffer = originalCreate;
+      native.pushErrorScope = originalPush;
+      native.popErrorScope = originalPop;
+      await waitFor(() => failures.length === 1, mode);
+      assert.deepEqual(samples, []);
+      let dispatchAfterFailure = 0;
+      probe.pass.dispatch = () => {
+        dispatchAfterFailure++;
+      };
+      probe.sample(fluid, world, 2);
+      assert.equal(dispatchAfterFailure, 0);
+      receipt.push({
+        fault: mode,
+        error: failures[0],
+        samples: 0,
+        dispatchAfterFailure,
+        hardwareMemoryExhaustion: false,
+      });
+    } finally {
+      native.createBuffer = originalCreate;
+      native.pushErrorScope = originalPush;
+      native.popErrorScope = originalPop;
+      probe?.dispose();
+    }
+  }
+  dye.destroy();
+  return receipt;
 }
 
 async function benchmarkProbe(gpu, SmokeProbe, createWorld) {

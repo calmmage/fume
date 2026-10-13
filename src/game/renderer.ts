@@ -18,10 +18,21 @@ import { createContourRoom } from "./contour-room";
 import { Cosmos } from "./cosmos";
 import { SmokeProbe, type ProbeSession } from "./smoke-probe";
 import { sessionViewport } from "./session-view";
+import {
+  captureSessionWork,
+  releaseSessionBuffers,
+  type SessionBuffers,
+} from "./session-allocation";
 import compositeWgsl from "./wgsl/composite.wgsl";
 
 const MAX_BALLS = 18;
 const MAX_PT = 48;
+
+interface PendingSession {
+  phase: "allocating" | "first-use" | "checking-first-use";
+  probe: ProbeSession;
+  onFailure: (message: string) => void;
+}
 
 function filmLutFloats(): Float32Array {
   const bytes = buildFilmLut();
@@ -42,6 +53,8 @@ export class Renderer {
   private sessionShape: { w: number; h: number; reduced: boolean } | null = null;
   private probe: SmokeProbe | null = null;
   private probeSession: ProbeSession | null = null;
+  private pendingSession: PendingSession | null = null;
+  private sessionBuffers: SessionBuffers = new Set();
   private unavailable = false;
   private disposed = false;
   private constructor(
@@ -113,31 +126,49 @@ export class Renderer {
   }
 
   /** Keep the original ping-pong buffers, parity and seeded IDs entirely idle. */
-  enterSession(world: World, probeSession: ProbeSession): boolean {
+  enterSession(
+    world: World,
+    probeSession: ProbeSession,
+    onAllocationFailure: (message: string) => void = probeSession.onError,
+  ): boolean {
     if (this.disposed || this.unavailable || this.parkedFluid) return false;
-    let next: Fluid | null = null;
-    try {
-      next = createFluid(this.gpu, world.w, world.h, world.reducedMotion);
-      this.probe ??= new SmokeProbe(this.gpu);
-      this.parkedFluid = this.fluid;
-      this.fluid = next;
-      this.sessionShape = { w: world.w, h: world.h, reduced: world.reducedMotion };
-      this.probeSession = probeSession;
-      this.probe.configure(probeSession);
-      return true;
-    } catch (error) {
-      if (next) destroyFluid(next);
-      probeSession.onError(error instanceof Error ? error.message : String(error));
+    const allocation = captureSessionWork(this.gpu, this.sessionBuffers, () =>
+      createFluid(this.gpu, world.w, world.h, world.reducedMotion),
+    );
+    if (!allocation.value || allocation.error) {
+      releaseSessionBuffers(this.sessionBuffers);
+      onAllocationFailure(allocation.error ?? "Challenge buffers could not be allocated.");
       return false;
     }
+    this.parkedFluid = this.fluid;
+    this.fluid = allocation.value;
+    this.sessionShape = { w: world.w, h: world.h, reduced: world.reducedMotion };
+    const pending: PendingSession = {
+      phase: "allocating",
+      probe: probeSession,
+      onFailure: onAllocationFailure,
+    };
+    this.pendingSession = pending;
+    this.checkSessionWork(pending, allocation.checked, "first-use");
+    return true;
   }
 
-  replaceSession(world: World, probeSession: ProbeSession): boolean {
+  replaceSession(
+    world: World,
+    probeSession: ProbeSession,
+    onAllocationFailure: (message: string) => void = probeSession.onError,
+  ): boolean {
     if (this.disposed || this.unavailable || !this.parkedFluid) return false;
     const shape = this.sessionShape;
-    if (shape?.w === world.w && shape.h === world.h && shape.reduced === world.reducedMotion) {
+    if (
+      !this.pendingSession &&
+      shape?.w === world.w &&
+      shape.h === world.h &&
+      shape.reduced === world.reducedMotion
+    ) {
       this.probe?.configure(null);
-      try {
+      this.probeSession = null;
+      const reset = captureSessionWork(this.gpu, this.sessionBuffers, () => {
         // vgpu owns compute-pass uniforms until GPU disposal. Reuse the
         // challenge's passes and field allocation across retries instead of
         // accumulating another set of pipeline uniforms on every attempt.
@@ -156,21 +187,60 @@ export class Renderer {
         const zeros = new Float32Array(Math.max(...buffers.map((buffer) => buffer.size)) / 4);
         for (const buffer of buffers) buffer.write(zeros.subarray(0, buffer.size / 4));
         f.seeded.clear();
-        this.probeSession = probeSession;
-        this.probe?.configure(probeSession);
-        return true;
-      } catch (error) {
+      });
+      if (reset.error) {
         this.restoreSession();
-        probeSession.onError(error instanceof Error ? error.message : String(error));
+        onAllocationFailure(reset.error);
         return false;
       }
+      const pending: PendingSession = {
+        phase: "allocating",
+        probe: probeSession,
+        onFailure: onAllocationFailure,
+      };
+      this.pendingSession = pending;
+      this.checkSessionWork(pending, reset.checked, "first-use");
+      return true;
     }
     // Release the old attempt before allocating another: never three fields.
     this.restoreSession();
-    return this.enterSession(world, probeSession);
+    return this.enterSession(world, probeSession, onAllocationFailure);
+  }
+
+  private checkSessionWork(
+    pending: PendingSession,
+    checked: Promise<string | null>,
+    next: "first-use" | "ready",
+  ) {
+    void checked.then((error) => {
+      if (this.disposed || this.unavailable || this.pendingSession !== pending) return;
+      if (error) {
+        this.restoreSession();
+        pending.onFailure(error);
+      } else if (next === "first-use") {
+        pending.phase = "first-use";
+      } else {
+        this.pendingSession = null;
+        this.probeSession = pending.probe;
+        const failMeasurement = (message: string) => {
+          if (this.disposed || this.probeSession !== pending.probe) return;
+          // A failed optional pipeline/buffer must not be cached into Retry.
+          this.probe?.dispose();
+          this.probe = null;
+          pending.probe.onError(message);
+        };
+        try {
+          this.probe ??= new SmokeProbe(this.gpu);
+          this.probe.configure({ ...pending.probe, onError: failMeasurement });
+        } catch (cause) {
+          failMeasurement(cause instanceof Error ? cause.message : String(cause));
+        }
+      }
+    });
   }
 
   restoreSession() {
+    this.pendingSession = null;
     this.probe?.configure(null);
     this.probeSession = null;
     this.sessionShape = null;
@@ -179,6 +249,7 @@ export class Renderer {
     this.fluid = this.parkedFluid;
     this.parkedFluid = null;
     destroyFluid(retired);
+    releaseSessionBuffers(this.sessionBuffers);
   }
 
   resize(cssW: number, cssH: number, dpr: number) {
@@ -191,6 +262,19 @@ export class Renderer {
 
   draw(world: World, _alpha: number, dt: number) {
     if (this.unavailable) throw new Error("The GPU connection was lost. Reload to continue.");
+    const pending = this.pendingSession;
+    if (pending) {
+      if (pending.phase === "first-use") {
+        pending.phase = "checking-first-use";
+        // First use creates the solver's lazy uniform buffers. Validate this
+        // candidate-only step before rendering it or issuing a smoke probe.
+        const firstUse = captureSessionWork(this.gpu, this.sessionBuffers, () =>
+          stepFluid(this.fluid, world, dt),
+        );
+        this.checkSessionWork(pending, firstUse.checked, "ready");
+      }
+      return;
+    }
     this.fluid = ensureFluidSize(this.gpu, this.fluid, world);
     stepFluid(this.fluid, world, dt);
     const viewport = sessionViewport(this.surface.size[0], this.surface.size[1], world.w, world.h);
@@ -301,7 +385,8 @@ export class Renderer {
     try {
       if (this.probeSession) this.probe?.sample(this.fluid, world);
     } catch (error) {
-      this.probe?.configure(null);
+      this.probe?.dispose();
+      this.probe = null;
       this.probeSession?.onError(error instanceof Error ? error.message : String(error));
     }
   }
@@ -309,6 +394,7 @@ export class Renderer {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.pendingSession = null;
     this.probe?.dispose();
     this.materials.dispose();
     this.contours.dispose();
@@ -316,6 +402,7 @@ export class Renderer {
     destroyFluid(this.fluid);
     if (this.parkedFluid) destroyFluid(this.parkedFluid);
     this.parkedFluid = null;
+    releaseSessionBuffers(this.sessionBuffers);
     this.gpu.dispose();
   }
 }
