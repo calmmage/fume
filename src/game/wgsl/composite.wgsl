@@ -33,6 +33,10 @@ struct Config {
   room_hw: f32,
   room_hh: f32,
   scene_z: f32,
+  room_style: f32,
+  dust_on: f32,
+  material_height: f32,
+  visual_style: f32,
 }
 
 struct Balls {
@@ -49,6 +53,11 @@ struct Balls {
 @group(0) @binding(3) var<storage, read> dye: array<vec4f>;
 @group(0) @binding(4) var<storage, read> lut: array<vec4f>;
 @group(0) @binding(5) var<storage, read> particles: array<vec4f>;
+@group(0) @binding(6) var environmentMap: texture_2d<f32>;
+@group(0) @binding(7) var materialSampler: sampler;
+@group(0) @binding(8) var wallMap: texture_2d<f32>;
+@group(0) @binding(9) var floorMap: texture_2d<f32>;
+@group(0) @binding(10) var windowMap: texture_2d<f32>;
 
 fn sample_dye(uv: vec2f) -> vec3f {
   if (!uv_inside(uv)) { return vec3f(0.0); }
@@ -134,20 +143,25 @@ fn bubble_at(world: vec2f, i: i32) -> vec4f {
   let fade = 1.0 - smoothstep(0.02, 0.72, pop.x);
   if (fade < 0.02) { return vec4f(0.0); }
 
-  let uvG = clamp(world / config.world, vec2f(0.001), vec2f(0.999));
-  let fill = balls.smoke[i].x;
-  let texel = 3.0 / vec2f(config.dye_size);
-  var soft = dens(uvG);
-  soft += dens(uvG + vec2f(texel.x, 0.0));
-  soft += dens(uvG - vec2f(texel.x, 0.0));
-  soft += dens(uvG + vec2f(0.0, texel.y));
-  soft += dens(uvG - vec2f(0.0, texel.y));
-  soft *= 0.2;
-  let amount = clamp(max(soft, fill * 0.55), 0.0, 1.0);
-  let edge = smoothstep(1.02, 0.93, nd);
-  let rgb = vec3f(0.74, 0.75, 0.78) * (0.48 + 0.5 * amount);
-  var alpha = edge * (0.38 + 0.36 * amount) * fade;
-  alpha = clamp(alpha, 0.0, 0.82);
+  // This is only the film. The unchanged fluid field is composited separately.
+  // Never replace the interior with an opaque, synthetic gray smoke disc.
+  let aa = max(0.008, 1.4 / radius);
+  let coverage = 1.0 - smoothstep(1.0 - aa, 1.0 + aa, nd);
+  let nz = sqrt(max(0.001, 1.0 - min(nd * nd, 1.0)));
+  let normal = vec3f(vp, nz);
+  let fresnel = 0.018 + 0.982 * pow(1.0 - nz, 5.0);
+  let rim = exp(-pow((nd - 0.985) / max(0.012, aa * 1.3), 2.0));
+  let thickness = max(80.0, br.w) * (0.78 + 0.24 * vp.y + 0.08 * sin(vp.x * 4.0 + pop.w));
+  let film = film_color(thickness * (0.3 + 0.7 * nz));
+  let reflected = reflect(vec3f(0.0, 0.0, -1.0), normal);
+  let w = (reflected.xy - vec2f(-0.63, -0.32)) / vec2f(0.22, 0.52);
+  let window = (1.0 - smoothstep(0.7, 1.0, abs(w.x))) * (1.0 - smoothstep(0.82, 1.0, abs(w.y)));
+  let mullion = smoothstep(0.035, 0.075, abs(w.x)) * smoothstep(0.035, 0.075, abs(w.y));
+  let highlight = window * mullion * min(config.gloss, 1.5);
+  let opposite = exp(-pow((vp.x - 0.68) / 0.085, 2.0) - pow((vp.y - 0.55) / 0.23, 2.0));
+  var rgb = mix(vec3f(0.76, 0.74, 0.69), film, clamp(config.iri * 0.34, 0.0, 0.65));
+  rgb += vec3f(0.95, 0.89, 0.74) * highlight * 0.8;
+  let alpha = min(0.82, fresnel * 0.27 + rim * 0.3 + highlight * 0.44 + opposite * 0.22) * coverage * fade;
   return vec4f(rgb * alpha, alpha);
 }
 
@@ -256,23 +270,63 @@ fn gadget_at(world: vec2f, i: i32) -> vec4f {
       col = mix(col, vec3f(0.16, 0.17, 0.18), mouth * 0.55);
     }
   } else if (abs(kind - KIND_FIRE) < 0.5) {
-    let base = sd_box(p - vec2f(0.0, hh * 0.28), vec2f(hw * 0.72, hh * 0.22)) - 1.2;
-    let logA = sd_capsule(p, vec2f(-hw * 0.35, hh * 0.18), vec2f(hw * 0.35, hh * 0.28), 2.4);
-    let logB = sd_capsule(p, vec2f(-hw * 0.28, hh * 0.34), vec2f(hw * 0.3, hh * 0.16), 2.1);
-    var flame = length((p - vec2f(0.0, -hh * 0.15)) / vec2f(0.55, 1.0)) - hh * 0.55;
-    flame += 0.7 * sin(config.time * 11.0 + pose.x * 0.03);
-    var tongue = length((p - vec2f(sin(config.time * 7.0) * 2.0, -hh * 0.55)) / vec2f(0.35, 1.15)) - hh * 0.28;
-    var rgb = vec3f(0.28, 0.16, 0.1);
-    var a = max(1.0 - smoothstep(0.0, 1.5, base), 1.0 - smoothstep(0.0, 1.4, min(logA, logB)));
-    let fa = (1.0 - smoothstep(0.0, 2.4, flame)) * on;
-    let ta = (1.0 - smoothstep(0.0, 1.8, tongue)) * on;
-    rgb = mix(rgb, vec3f(0.95, 0.42, 0.12), clamp(fa, 0.0, 1.0));
-    rgb = mix(rgb, vec3f(0.98, 0.78, 0.35), clamp(ta, 0.0, 1.0));
-    let dusk = select(1.0, 1.25, config.palette > 0.5);
-    let glow = exp(-dot(p, p) / 900.0) * on;
-    alpha = max(a, max(fa * 0.85, ta * 0.7));
-    alpha = max(alpha, glow * 0.28);
-    col = rgb + vec3f(0.55, 0.22, 0.05) * glow * dusk;
+    // Keep the detailed fire work local to its footprint, even with many tools.
+    if (abs(p.x) > hw * 1.4 || p.y < -hh * 2.2 || p.y > hh * 0.9) { return vec4f(0.0); }
+    let phase = pose.x * 0.013 + pose.y * 0.027;
+    let pulse = 0.86 + 0.09 * sin(config.time * 4.7 + phase) + 0.05 * sin(config.time * 8.3);
+    let glowP = (p - vec2f(0.0, -hh * 0.35)) / vec2f(hw * 0.85, hh * 1.35);
+    let glowA = exp(-dot(glowP, glowP) * 3.2) * 0.14 * on * pulse;
+    var fire = vec4f(vec3f(0.85, 0.19, 0.025) * glowA, glowA);
+
+    // Irregular coals sit below two crossed logs; their exposed centers breathe.
+    let bed = sd_ellipse(p - vec2f(0.0, hh * 0.35), vec2f(hw * 0.83, hh * 0.23));
+    let bedA = (1.0 - smoothstep(-0.5, 0.9, bed)) * 0.96;
+    let cellSize = vec2f(max(hw * 0.19, 3.0), max(hh * 0.18, 2.5));
+    let cell = floor(p / cellSize);
+    let coalSeed = hash21(cell + phase);
+    let coalP = fract(p / cellSize) - vec2f(0.42 + coalSeed * 0.16, 0.5);
+    let hot = exp(-dot(coalP, coalP) * 14.0) * (0.65 + 0.35 * sin(config.time * 2.3 + coalSeed * 9.0)) * on;
+    let coalCol = vec3f(0.055, 0.039, 0.029) + vec3f(0.9, 0.16, 0.015) * hot;
+    fire = over(vec4f(coalCol * bedA, bedA), fire);
+    for (var logIndex = 0; logIndex < 2; logIndex++) {
+      let a = select(vec2f(-hw * 0.72, hh * 0.19), vec2f(-hw * 0.56, hh * 0.45), logIndex == 1);
+      let b = select(vec2f(hw * 0.57, hh * 0.47), vec2f(hw * 0.73, hh * 0.16), logIndex == 1);
+      let radius = max(hh * 0.14, 1.5);
+      let axis = normalize(b - a);
+      let along = dot(p - a, axis);
+      let across = dot(p - a, vec2f(-axis.y, axis.x));
+      let logA = 1.0 - smoothstep(-0.4, 0.9, sd_capsule(p, a, b, radius));
+      let grain = 0.7 + 0.3 * sin(along * 1.6 + sin(across * 2.1));
+      let rim = 1.0 - smoothstep(0.15, 1.15, abs(across + radius * 0.68));
+      let crack = pow(max(0.0, sin(along * 0.83 + f32(logIndex) * 2.7)), 12.0);
+      var logCol = vec3f(0.12, 0.071, 0.039) * grain * (0.65 + 0.35 * (1.0 - smoothstep(-radius, radius, across)));
+      logCol += vec3f(0.76, 0.21, 0.026) * (rim * 0.65 + crack * 0.32) * on * pulse;
+      fire = over(vec4f(logCol * logA, logA), fire);
+    }
+
+    // Five tapered tongues curl upward at different rates. Travelling ripples
+    // carry detail from the roots to the tips, with warm edges and hot cores.
+    for (var k = 0; k < 5; k++) {
+      let id = f32(k);
+      let seed = phase + id * 2.37;
+      let central = 1.0 - abs(id - 2.0) * 0.22;
+      let height = hh * (1.5 * central + 0.2 * sin(config.time * (3.1 + id * 0.31) + seed) + 0.12 * sin(config.time * 6.7 + seed * 1.3));
+      let t = (hh * 0.2 - p.y) / max(height, 1.0);
+      let rise = clamp(t, 0.0, 1.0);
+      let root = (id - 2.0) * hw * 0.24;
+      let sway = hw * rise * rise * (0.11 * sin(config.time * 3.8 + seed) + 0.075 * sin(rise * 9.0 - config.time * 5.5 + seed));
+      let width = max(0.0, 1.0 - rise) * hw * (0.145 + central * 0.045) * (0.87 + 0.13 * sin(rise * 16.0 - config.time * 7.0 + seed));
+      let distance = abs(p.x - root - sway);
+      let vertical = smoothstep(-0.06, 0.05, t) * (1.0 - smoothstep(0.9, 1.02, t));
+      let tongueA = (1.0 - smoothstep(max(0.0, width - 0.65), width + 0.65, distance)) * vertical * on * 0.88;
+      let core = clamp(1.0 - distance / max(width, 0.1), 0.0, 1.0);
+      let heat = core * (1.0 - smoothstep(0.18, 0.95, rise));
+      var flameCol = mix(vec3f(0.98, 0.19, 0.018), vec3f(1.0, 0.68, 0.16), core);
+      flameCol = mix(flameCol, vec3f(1.0, 0.95, 0.71), heat * heat * 0.88);
+      fire = over(vec4f(flameCol * tongueA, tongueA), fire);
+    }
+    alpha = fire.a;
+    col = fire.rgb / max(alpha, 0.0001);
   } else if (abs(kind - KIND_VORTEX) < 0.5) {
     let r = length(p);
     let th = atan2(p.y, p.x);
@@ -559,18 +613,6 @@ fn hall_tint() -> vec3f {
   return vec3f(0.96, 0.97, 0.98);
 }
 
-fn stone(along: f32, across: f32) -> vec3f {
-  let row = floor(across);
-  let stagger = select(0.0, 0.5, fract(row * 0.5) > 0.25);
-  let u = fract(along + stagger);
-  let v = fract(across);
-  let n = hash21(vec2f(floor(along + stagger), row));
-  var c = mix(vec3f(0.33, 0.32, 0.3), vec3f(0.56, 0.54, 0.5), n);
-  c *= 0.92 + 0.1 * hash21(vec2f(floor(along) + 2.0, row * 1.3));
-  if (u < 0.07 || v < 0.11) { c = vec3f(0.16, 0.155, 0.145); }
-  return c * hall_tint();
-}
-
 fn nearer(best: vec2f, t: f32, face: f32, ro: vec3f, rd: vec3f, hw: f32, hh: f32, z0: f32, z1: f32) -> vec2f {
   if (t < 0.05 || t >= best.x) { return best; }
   let p = ro + rd * t;
@@ -586,51 +628,190 @@ fn nearer(best: vec2f, t: f32, face: f32, ro: vec3f, rd: vec3f, hw: f32, hh: f32
 }
 
 fn dust_motes(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
+  if (config.dust_on < 0.5) { return vec3f(0.0); }
   var glow = vec3f(0.0);
-  let tint = vec3f(0.95, 0.93, 0.86) * hall_tint();
-  for (var i = 0; i < 7; i++) {
-    let t = 0.4 + f32(i) * 0.62;
+  // Fixed points on four world-depth slices. Camera movement is the only
+  // motion: no time offset, no regenerating identities and no volumetric blobs.
+  for (var i = 0; i < 4; i++) {
+    let t = 0.9 + f32(i) * 0.87;
     if (t > t1) { break; }
-    let p = ro + rd * t + vec3f(0.0, sin(config.time * 0.4 + f32(i) * 1.7) * 0.025, 0.0);
-    let cell = floor(p * 4.2);
-    let h = hash21(cell.xy + cell.z * 17.0);
-    let jitter = vec3f(hash21(cell.yz), hash21(cell.zx + 1.7), hash21(cell.xy + 2.2));
-    let q = p * 4.2 - cell - jitter;
-    let mote = exp(-dot(q, q) * 26.0) * (0.3 + 0.7 * h);
-    glow += tint * mote * exp(-abs(p.x) * 1.6) * exp(-t * 0.2) * 0.9;
+    let p = (ro + rd * t).xy;
+    let spacing = 0.24;
+    let cell = floor(p / spacing);
+    let seed = cell + vec2f(f32(i) * 23.7, f32(i) * 11.3);
+    let h = hash21(seed);
+    let jitter = vec2f(hash21(seed + 3.4), hash21(seed + 9.1));
+    let center = (cell + 0.18 + jitter * 0.64) * spacing;
+    let pixel = t / max(config.world.y, 1.0);
+    let radius = mix(1.1, 0.6, f32(i) / 3.0);
+    let d = length(p - center) / pixel;
+    let core = 1.0 - smoothstep(radius * 0.5, radius + 0.55, d);
+    let visible = select(0.0, 1.0, h > 0.63);
+    glow += select(vec3f(0.78, 0.76, 0.69), vec3f(0.78), config.visual_style < 0.5) * core * visible * (0.2 + h * 0.16);
   }
   return glow;
 }
 
+fn window_mask(p: vec3f) -> f32 {
+  let direction = vec3f(0.86, 0.48, 0.22);
+  let distance = max(0.0, (p.x + config.room_hw) / direction.x);
+  let entry = p - direction * distance;
+  let y = entry.y;
+  let z = entry.z;
+  let opening = smoothstep(-0.58, -0.49, y) * (1.0 - smoothstep(0.02, 0.12, y))
+    * smoothstep(0.7, 0.86, z) * (1.0 - smoothstep(2.1, 2.35, z));
+  let bars = (0.6 + 0.4 * smoothstep(0.025, 0.085, abs(y + 0.24)))
+    * (0.6 + 0.4 * smoothstep(0.025, 0.085, abs(z - 1.5)));
+  return opening * bars;
+}
+
 fn volume_light(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
+  if (config.rays < 0.5 || config.room_style > 1.5) { return vec3f(0.0); }
   var acc = vec3f(0.0);
-  let tint = vec3f(0.95, 0.9, 0.72) * hall_tint();
-  for (var i = 0; i < 5; i++) {
-    let t = 0.45 + f32(i) * 0.75;
-    if (t > t1) { break; }
+  let tint = vec3f(0.92, 0.87, 0.74) * hall_tint();
+  let extent = min(t1, 5.0);
+  for (var i = 0; i < 6; i++) {
+    let t = (f32(i) + 0.5) * extent / 6.0;
     let p = ro + rd * t;
-    let band = abs(fract(p.x * 1.5 + p.z * 0.12 + config.time * 0.015) - 0.5);
-    acc += tint * exp(-band * 16.0) * exp(-t * 0.16) * 0.05;
+    acc += tint * window_mask(p) * extent * 0.003;
   }
   return acc;
+}
+
+// Neighbor rays intersect the SAME wall plane to supply explicit UV gradients.
+// No derivative intrinsic runs inside a per-pixel wall/ceiling branch.
+fn material_plane_point(ro: vec3f, rd: vec3f, plane: vec3f, normal: vec3f) -> vec3f {
+  let denominator = dot(rd, normal);
+  let safe = select(-1.0, 1.0, denominator >= 0.0) * max(abs(denominator), 1e-5);
+  return ro + rd * (dot(plane - ro, normal) / safe);
+}
+
+fn material_face_uv(p: vec3f, face: f32, hw: f32, hh: f32, depth: f32) -> vec2f {
+  if (face < 2.5) { return vec2f(p.z / depth, p.y / (hh * 2.0) + 0.5); }
+  if (face < 4.5) { return vec2f(p.x / (hw * 2.0) + 0.5, p.z / depth); }
+  return p.xy / vec2f(hw * 2.0, hh * 2.0) + 0.5;
+}
+
+fn material_back_uv(uv: vec2f, hw: f32, hh: f32) -> vec2f {
+  // The authored plate appears once. Its baked left window is replaced by the
+  // actual side-wall opening, and cover preserves the fine grain/pixel aspect.
+  let size = vec2f(textureDimensions(environmentMap));
+  let imageAspect = size.x * 0.88 / max(size.y, 1.0);
+  let faceAspect = hw / hh;
+  let cover = vec2f(min(1.0, faceAspect / imageAspect), min(1.0, imageAspect / faceAspect));
+  return vec2f(0.12, 0.0) + ((uv - 0.5) * cover + 0.5) * vec2f(0.88, 1.0);
+}
+
+fn material_wall_uv(p: vec3f, uv: vec2f) -> vec2f {
+  if (config.visual_style < 1.5) {
+    // Fine dark paneling, never the obsolete brick/star/parquet atlas.
+    return vec2f(0.36, 0.04) + uv * vec2f(0.62, 0.92);
+  }
+  let period = select(vec2f(3.0), vec2f(2.2, 1.2), config.visual_style > 3.5);
+  return vec2f(p.z, p.y) / period + vec2f(0.0, 0.5);
+}
+
+fn material_floor_uv(p: vec3f, uv: vec2f) -> vec2f {
+  if (config.visual_style < 1.5) { return vec2f(0.45, 0.14) + uv * vec2f(0.38, 0.45); }
+  let period = select(vec2f(3.0), vec2f(2.2, 1.2), config.visual_style > 3.5);
+  return p.xz / period;
+}
+
+fn material_window_uv(p: vec3f) -> vec2f {
+  let windowOffset = max(0.0, config.room_depth - 2.5);
+  let uv = vec2f((p.z - windowOffset - 0.7) / 1.65, (p.y + 0.58) / 0.7);
+  if (config.visual_style < 1.5) { return vec2f(0.004, 0.004) + uv * vec2f(0.032, 0.64); }
+  return uv;
+}
+
+fn material_sample(map: texture_2d<f32>, uv: vec2f, dx: vec2f, dy: vec2f) -> vec3f {
+  if (config.visual_style < 1.5) {
+    let size = vec2f(textureDimensions(map));
+    let footprint = max(length(dx * size), length(dy * size));
+    let level = u32(clamp(floor(log2(max(footprint, 1.0))), 0.0, f32(textureNumLevels(map) - 1u)));
+    let mipSize = textureDimensions(map, level);
+    let at = vec2i(clamp(uv, vec2f(0.0), vec2f(0.99999)) * vec2f(mipSize));
+    return textureLoad(map, at, i32(level)).rgb;
+  }
+  return textureSampleGrad(map, materialSampler, uv, dx, dy).rgb;
+}
+
+fn material_room(uv: vec2f) -> vec3f {
+  let aspect = config.world.x / max(config.world.y, 1.0);
+  let pan = clamp(config.parallax, vec2f(-0.24), vec2f(0.24));
+  let hw = 1.5 * aspect * (config.room_hw / 0.9);
+  let hh = 1.45 * (config.room_hh / 0.62);
+  let depth = max(1.6, config.room_depth);
+  let windowOffset = max(0.0, depth - 2.5);
+  let ro = vec3f(-pan.x * aspect * 5.0 * 0.45, -pan.y * 5.0 * 0.45, 0.0);
+  let rd = vec3f((uv.x - config.room_cx) * aspect, uv.y - (config.room_cy - 0.06), 1.0);
+  var best = vec2f(depth, 5.0);
+  if (abs(rd.x) > 1e-5) {
+    best = nearer(best, (-hw - ro.x) / rd.x, 1.0, ro, rd, hw, hh, 0.0, depth);
+    best = nearer(best, (hw - ro.x) / rd.x, 2.0, ro, rd, hw, hh, 0.0, depth);
+  }
+  if (abs(rd.y) > 1e-5) {
+    best = nearer(best, (hh - ro.y) / rd.y, 3.0, ro, rd, hw, hh, 0.0, depth);
+    best = nearer(best, (-hh - ro.y) / rd.y, 4.0, ro, rd, hw, hh, 0.0, depth);
+  }
+  let p = ro + rd * best.x;
+  var normal = vec3f(0.0, 0.0, -1.0);
+  if (best.y < 1.5) { normal = vec3f(1.0, 0.0, 0.0); }
+  else if (best.y < 2.5) { normal = vec3f(-1.0, 0.0, 0.0); }
+  else if (best.y < 3.5) { normal = vec3f(0.0, -1.0, 0.0); }
+  else if (best.y < 4.5) { normal = vec3f(0.0, 1.0, 0.0); }
+  let pixelStep = 1.0 / max(config.material_height, 1.0);
+  let px = material_plane_point(ro, rd + vec3f(pixelStep, 0.0, 0.0), p, normal);
+  let py = material_plane_point(ro, rd + vec3f(0.0, pixelStep, 0.0), p, normal);
+  let at = material_face_uv(p, best.y, hw, hh, depth);
+  let ax = material_face_uv(px, best.y, hw, hh, depth);
+  let ay = material_face_uv(py, best.y, hw, hh, depth);
+  let toLight = vec3f(-hw + 0.05, -0.24, 1.5 + windowOffset) - p;
+  let diffuse = max(0.0, dot(normal, normalize(toLight)));
+  let illumination = 0.12 + 0.42 * diffuse / (1.0 + length(toLight) * 0.18);
+  var col = vec3f(0.0);
+  if (best.y < 2.5) {
+    let wallUV = material_wall_uv(p, at);
+    let wall = material_sample(wallMap, wallUV, material_wall_uv(px, ax) - wallUV, material_wall_uv(py, ay) - wallUV);
+    col = wall * illumination;
+    if (config.visual_style > 1.5) {
+      let joint = min(fract(p.z / 1.3), 1.0 - fract(p.z / 1.3));
+      col *= 0.7 + 0.3 * smoothstep(0.004, 0.015, joint);
+    }
+  } else if (best.y < 4.5) {
+    let floorUV = material_floor_uv(p, at);
+    let floor = material_sample(floorMap, floorUV, material_floor_uv(px, ax) - floorUV, material_floor_uv(py, ay) - floorUV);
+    col = floor * illumination * select(0.72, 0.9, best.y < 3.5);
+  } else {
+    let backUV = material_back_uv(at, hw, hh);
+    col = material_sample(environmentMap, backUV, material_back_uv(ax, hw, hh) - backUV, material_back_uv(ay, hw, hh) - backUV);
+  }
+  // Darken only the contact edges, keeping the authored back-wall lighting.
+  var edge = min(hw - abs(p.x), hh - abs(p.y));
+  if (best.y < 2.5) { edge = min(depth - p.z, hh - abs(p.y)); }
+  else if (best.y < 4.5) { edge = min(depth - p.z, hw - abs(p.x)); }
+  col *= 0.68 + 0.32 * smoothstep(0.0, 0.10, edge);
+  if (best.y < 1.5) {
+    let windowZ = p.z - windowOffset;
+    let opening = step(-0.58, p.y) * step(p.y, 0.12) * step(0.7, windowZ) * step(windowZ, 2.35);
+    let panes = smoothstep(0.016, 0.028, abs(p.y + 0.24)) * smoothstep(0.016, 0.028, abs(windowZ - 1.5));
+    if (opening * panes > 0.0) {
+      let glassUV = material_window_uv(p);
+      let glass = material_sample(windowMap, glassUV, material_window_uv(px) - glassUV, material_window_uv(py) - glassUV);
+      col = mix(col, glass * 0.88 + vec3f(0.10, 0.085, 0.06), opening * panes);
+    }
+  }
+  col += dust_motes(ro, rd, best.x);
+  // Keep the accepted ray functions unchanged; translate their left wall to
+  // the wider material room in the caller's coordinates.
+  col += volume_light(ro + vec3f(hw - config.room_hw, 0.0, -windowOffset), rd, best.x);
+  return col;
 }
 
 struct RoomView {
   color: vec3f,
   scene_uv: vec2f,
   inside: f32,
-}
-
-fn wood_door(lp: vec2f) -> vec3f {
-  let plank = fract(lp.x * 6.0);
-  let grain = 0.82 + 0.18 * sin(lp.y * 36.0 + floor(lp.x * 6.0) * 1.7);
-  var c = vec3f(0.38, 0.22, 0.1) * grain;
-  if (plank < 0.055) { c *= 0.62; }
-  if (abs(lp.y - 0.18) < 0.025 || abs(lp.y - 0.62) < 0.025) { c *= 0.7; }
-  if (length((lp - vec2f(0.8, 0.55)) * vec2f(1.0, 1.8)) < 0.055) {
-    c = vec3f(0.62, 0.52, 0.28);
-  }
-  return c;
 }
 
 fn march_room(uv: vec2f) -> RoomView {
@@ -642,11 +823,19 @@ fn march_room(uv: vec2f) -> RoomView {
   let hh = max(config.room_hh, 0.12);
   let z0 = 0.7;
   let z1 = max(config.room_depth, z0 + 0.4);
-  let zS = z0 + (z1 - z0) * clamp(config.scene_z, 0.08, 0.92);
-  let courses = clamp(config.slices, 6.0, 28.0);
-  let brickLen = (z1 - z0) / courses;
-  let brickH = brickLen * 0.42;
-
+  if (config.visual_style > 0.5) {
+    // Matches screenToWorld. Shared overscan keeps the visible corners inside
+    // the fluid domain throughout the full bounded pan range.
+    let offset = vec2f(tanh(look.x) * 0.11, tanh(look.y * 2.0) * 0.08);
+    if (config.visual_style > 1.5 && config.visual_style < 2.5) {
+      // Cosmos is already projected from a 3D star volume at surface resolution.
+      // The live fluid plane keeps the existing pointer/bubble mapping.
+      let col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
+      return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
+    }
+    let col = material_room(uv);
+    return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
+  }
   var best = vec2f(1e5, 0.0);
   if (abs(rd.x) > 1e-4) {
     best = nearer(best, (-hw - ro.x) / rd.x, 1.0, ro, rd, hw, hh, z0, z1);
@@ -658,40 +847,18 @@ fn march_room(uv: vec2f) -> RoomView {
   }
   best = nearer(best, (z1 - ro.z) / rd.z, 5.0, ro, rd, hw, hh, z0, z1);
 
-  let sceneP = ro + rd * zS;
-  let scene_uv = vec2f(sceneP.x / (hw * 2.0) + 0.5, sceneP.y / (hh * 2.0) + 0.5);
-  let inside = sceneP.z > z0 && abs(sceneP.x) < hw && abs(sceneP.y) < hh && zS < best.x;
+  // The furnished backdrop does not bound the live fluid. The old room-box
+  // intersection cut a rectangular ceiling through smoke and bubbles. Keep
+  // every visible pixel inside the field, matching screenToScene for pointers.
+  let offset = vec2f(tanh(look.x) * 0.11, tanh(look.y * 2.0) * 0.08);
+  let scene_uv = (uv - offset - 0.5) / 1.28 + 0.5;
 
-  var col = vec3f(0.015, 0.015, 0.017);
-  if (best.x < 1e4) {
-    let p = ro + rd * best.x;
-    let fade = mix(0.42, 1.0, exp(-(best.x - z0) * 0.16));
-    if (best.y < 1.5) {
-      col = stone(p.z / brickLen, p.y / brickH) * fade * 0.86;
-    } else if (best.y < 2.5) {
-      col = stone(p.z / brickLen, p.y / brickH) * fade * 0.9;
-    } else if (best.y < 3.5) {
-      col = stone(p.z / brickLen, p.x / brickH) * fade * 0.8;
-    } else if (best.y < 4.5) {
-      col = stone(p.z / brickLen, p.x / brickH) * fade * 0.62;
-    } else {
-      col = stone(p.x / brickH, p.y / brickH) * fade * 0.7;
-      let doorW = hw * 0.46;
-      let doorH = hh * 0.82;
-      if (abs(p.x) < doorW + brickH * 0.2 && p.y > hh - doorH - brickH * 0.15 && p.y < hh) {
-        col = vec3f(0.14, 0.08, 0.04);
-        if (abs(p.x) < doorW && p.y > hh - doorH && p.y < hh) {
-          let lp = vec2f(p.x / doorW * 0.5 + 0.5, (p.y - (hh - doorH)) / doorH);
-          col = wood_door(lp);
-        }
-      }
-    }
-  }
+  var col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
 
   let tDust = select(0.0, best.x, best.x < 1e4);
   col += dust_motes(ro, rd, tDust);
   col += volume_light(ro, rd, tDust);
-  return RoomView(col, scene_uv, select(0.0, 1.0, inside));
+  return RoomView(col, scene_uv, 1.0);
 }
 
 @fragment
@@ -719,8 +886,7 @@ fn fs_main(@location(0) uv_in: vec2f) -> @location(0) vec4f {
   let world = scene_uv * config.world + config.shake;
   let screen = uv * config.world + config.shake;
   col += ember_glow(world);
-  if (config.rays > 0.5) {
-    col *= select(1.0, 0.78, config.room_on > 0.5);
+  if (config.rays > 0.5 && config.room_on < 0.5) {
     col += light_rays(uv);
   }
   let smoke = select(vec4f(0.0), smoke_volume(scene_uv), show_scene > 0.5);

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import {
   AirVent,
   CircleDot,
@@ -7,8 +6,7 @@ import {
   Flame,
   FlameKindling,
   Hand,
-  MousePointer2,
-  Pin,
+  Power,
   Square,
   Trash2,
   Tornado,
@@ -28,105 +26,146 @@ const ICONS: Record<ToolKind, typeof Flame> = {
   fire: FlameKindling,
 };
 
+const ADJUST_HINTS: Partial<Record<ToolKind, string>> = {
+  candle: "Shift-scroll size",
+  smoke: "Alt-scroll aim · Shift-scroll size · Alt+Shift-scroll stretch",
+  fan: "Alt-scroll aim · Shift-scroll size · Alt+Shift-scroll stretch",
+  block: "Shift-scroll thickness · Alt-scroll length · Alt+Shift-scroll shape",
+  vent: "Shift-scroll size",
+  vortex: "Alt-scroll spin · Shift-scroll size",
+  fire: "Alt-scroll aim · Shift-scroll size · Alt+Shift-scroll stretch",
+};
+
+const SHORT_HINTS: Record<ToolKind, string> = {
+  hand: "Drag tools or move the room",
+  wand: "Hold to blow · tap bubbles to pop",
+  candle: "Tap to place a candle",
+  smoke: "Tap to place · drag to aim",
+  fan: "Tap to place · drag to aim",
+  block: "Drag to draw a barrier",
+  vent: "Tap to place a smoke outlet",
+  vortex: "Tap to place a spiral",
+  fire: "Tap to place · drag to aim",
+};
+
+function toolHint(tool: ToolKind) {
+  if (tool === "block") return "Drag to draw it";
+  if (tool === "vortex") return "A spiral";
+  return TOOLS.find((item) => item.id === tool)?.hint ?? "";
+}
+
 export function ToolDock({
   tool,
-  placeMode,
+  heldToolActive,
   gadgetCount,
   blowing,
   coarse,
   onTool,
-  onPlaceMode,
+  onHeldToolActive,
   onClear,
   onBlow,
 }: {
   tool: ToolKind;
-  placeMode: boolean;
+  heldToolActive: boolean;
   gadgetCount: number;
   blowing: boolean;
   coarse: boolean;
   onTool: (t: ToolKind) => void;
-  onPlaceMode: (on: boolean) => void;
+  onHeldToolActive: (on: boolean) => void;
   onClear: () => void;
   onBlow: (on: boolean) => void;
 }) {
   const active = TOOLS.find((t) => t.id === tool) ?? TOOLS[0];
-  const held = tool === "hand" || tool === "wand";
-  const followHint =
-    tool === "hand"
-      ? active.hint
-      : tool === "wand"
-        ? coarse
-          ? "Hold Blow · tap a circle"
-          : active.hint
-        : placeMode
-          ? `Pin · ${active.hint}`
-          : `Follows the pointer · ${active.hint}`;
+  const hasHeldDevice = tool !== "hand" && tool !== "wand";
+  const detailHint = coarse
+    ? tool === "hand"
+      ? "Tap bubbles to pop"
+      : hasHeldDevice
+        ? "Power toggles only the held tool"
+        : "Release to stop blowing"
+    : hasHeldDevice
+      ? "Scroll moves room · Shift-scroll size · Alt-scroll adjusts"
+      : "Scroll moves room · tap bubbles to pop";
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2 px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <p className="max-w-md px-3 text-center font-sans text-xs text-subtle">
-        {active.label}
-        <span className="text-muted"> · {followHint}</span>
+    <div
+      data-tool-dock
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2 px-2 pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
+      <p
+        data-tool-hint
+        className="h-8 w-[298px] max-w-full overflow-hidden text-center font-sans text-xs leading-4 text-subtle sm:w-[538px]"
+      >
+        <span className="block truncate">
+          {active.label}
+          <span className="text-muted"> · {SHORT_HINTS[tool]}</span>
+        </span>
+        <span className="block truncate text-muted">{detailHint}</span>
       </p>
-      <div className="pointer-events-auto flex max-w-full items-center gap-2 overflow-x-auto overscroll-contain rounded-pill border border-border bg-surface/80 p-1.5 backdrop-blur-sm">
-        {held ? null : (
-          <div className="flex shrink-0 rounded-pill bg-bg/40 p-0.5">
-            <ModeBtn
-              label="Follow pointer"
-              active={!placeMode}
-              onClick={() => onPlaceMode(false)}
+      <div
+        data-tool-grid
+        className="pointer-events-auto grid grid-cols-[repeat(6,2.75rem)] gap-1 rounded-[6px] border border-border bg-surface/80 p-1.5 backdrop-blur-sm sm:grid-cols-[repeat(11,2.75rem)]"
+      >
+        <button
+          type="button"
+          role="switch"
+          aria-label="Held tool active"
+          aria-checked={hasHeldDevice && heldToolActive}
+          disabled={!hasHeldDevice}
+          title={
+            hasHeldDevice
+              ? "Turn the tool at your pointer on or off. Click to place an active copy either way."
+              : "Hand and Wand have no held device to switch on or off."
+          }
+          onClick={() => onHeldToolActive(!heldToolActive)}
+          className={cn(
+            "flex size-11 items-center justify-center rounded-[6px] transition-colors duration-150 disabled:opacity-30",
+            hasHeldDevice && heldToolActive ? "bg-fg text-bg" : "text-muted enabled:hover:text-fg",
+          )}
+        >
+          <Power className="size-4" />
+        </button>
+        {TOOLS.map((item) => {
+          const Icon = ICONS[item.id];
+          const selected = item.id === tool;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              title={`${item.id === "hand" ? "Drag placed tools or pan empty space" : item.id === "wand" ? toolHint(item.id) : `Click to place · ${toolHint(item.id)}`} · Scroll moves the room${ADJUST_HINTS[item.id] ? ` · ${ADJUST_HINTS[item.id]}` : ""}`}
+              aria-label={item.label}
+              aria-pressed={selected}
+              onClick={() => onTool(item.id)}
+              className={cn(
+                "flex size-11 items-center justify-center rounded-[6px] transition-colors duration-150",
+                selected ? "bg-fg text-bg" : "text-muted hover:text-fg",
+              )}
             >
-              <MousePointer2 className="size-4" />
-            </ModeBtn>
-            <ModeBtn
-              label="Place in the room"
-              active={placeMode}
-              onClick={() => onPlaceMode(true)}
-            >
-              <Pin className="size-4" />
-            </ModeBtn>
-          </div>
-        )}
-        {held ? null : <span className="hidden h-6 w-px shrink-0 bg-border sm:block" />}
-        <div className="flex items-center gap-0.5">
-          {TOOLS.map((item) => {
-            const Icon = ICONS[item.id];
-            const selected = item.id === tool;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                title={item.hint}
-                aria-label={item.label}
-                aria-pressed={selected}
-                onClick={() => onTool(item.id)}
-                className={cn(
-                  "flex size-11 shrink-0 items-center justify-center rounded-full transition-colors duration-150",
-                  selected ? "bg-fg text-bg" : "text-muted hover:text-fg",
-                )}
-              >
-                <Icon className="size-4" />
-              </button>
-            );
-          })}
-        </div>
-        <span className="hidden h-6 w-px shrink-0 bg-border sm:block" />
+              <Icon className="size-4" />
+            </button>
+          );
+        })}
         <button
           type="button"
           aria-label="Clear placed tools"
           title="Clear placed tools"
           disabled={gadgetCount === 0}
           onClick={onClear}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-opacity duration-150 hover:text-fg disabled:opacity-30"
+          className="flex size-11 items-center justify-center rounded-[6px] text-muted transition-opacity duration-150 enabled:hover:text-fg disabled:opacity-30"
         >
           <Trash2 className="size-4" />
         </button>
       </div>
-      {tool === "wand" ? (
+      <div data-tool-action className="h-11 w-36">
         <button
           type="button"
+          aria-pressed={blowing}
+          aria-hidden={tool !== "wand"}
+          disabled={tool !== "wand"}
+          tabIndex={tool === "wand" ? 0 : -1}
           className={cn(
-            "pointer-events-auto min-h-11 min-w-36 rounded-full border px-7 font-sans text-sm font-medium backdrop-blur-sm transition-colors duration-150",
+            "h-11 w-full rounded-[6px] border font-sans text-sm font-medium backdrop-blur-sm transition-colors duration-150",
+            tool === "wand" ? "pointer-events-auto" : "invisible pointer-events-none",
             blowing ? "border-fg/25 bg-fg/90 text-bg" : "border-border bg-surface/45 text-fg",
           )}
           onPointerDown={(e) => {
@@ -136,37 +175,21 @@ export function ToolDock({
           }}
           onPointerUp={() => onBlow(false)}
           onPointerCancel={() => onBlow(false)}
+          onKeyDown={(e) => {
+            if (e.code !== "Space" && e.code !== "Enter") return;
+            e.preventDefault();
+            onBlow(true);
+          }}
+          onKeyUp={(e) => {
+            if (e.code !== "Space" && e.code !== "Enter") return;
+            e.preventDefault();
+            onBlow(false);
+          }}
+          onBlur={() => onBlow(false)}
         >
-          {blowing ? "Blowing" : "Hold to blow"}
+          Hold to blow
         </button>
-      ) : null}
+      </div>
     </div>
-  );
-}
-
-function ModeBtn({
-  label,
-  active,
-  onClick,
-  children,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "flex size-11 items-center justify-center rounded-full transition-colors duration-150",
-        active ? "bg-fg text-bg" : "text-muted hover:text-fg",
-      )}
-    >
-      {children}
-    </button>
   );
 }

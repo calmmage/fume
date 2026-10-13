@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, X } from "lucide-react";
 import { FumeGame, type HudSnapshot } from "@/game/fume-game";
 import { paintLayerRoom } from "@/game/layer-room";
-import { loadParams, saveParams, savePreset, type SimParams } from "@/game/params";
-import { loadLook, saveLook, type LookState } from "@/game/look";
+import {
+  DEFAULT_PARAMS,
+  loadParams,
+  loadPreset,
+  saveParams,
+  savePreset,
+  type SimParams,
+} from "@/game/params";
+import { DEFAULT_LOOK, loadLook, saveLook, type LookState } from "@/game/look";
+import {
+  CHALLENGES,
+  readChallengeCompletions,
+  saveChallengeCompletion,
+  type ChallengeId,
+} from "@/game/challenges";
+import { ChallengeOverlay, ChallengePanel, ChallengePicker } from "@/components/challenge-panel";
 import { SimPanel } from "@/components/sim-panel";
 import { ToolDock } from "@/components/tool-dock";
 import type { ToolKind } from "@/game/tools";
@@ -15,27 +29,70 @@ const EMPTY: HudSnapshot = {
   pops: 0,
   blowing: false,
   bubbleCount: 0,
-  playing: false,
+  playing: true,
   floaters: [],
   width: 1,
   height: 1,
   glError: null,
-  tool: "hand",
-  placeMode: false,
+  sessionNotice: null,
+  tool: "candle",
+  heldToolActive: true,
   gadgetCount: 0,
+  challenge: null,
 };
+
+export function SessionNotice({
+  notice,
+  onDismiss,
+}: {
+  notice: string | null;
+  onDismiss: () => void;
+}) {
+  if (notice === null) return null;
+  return (
+    <div
+      data-session-notice
+      className="absolute top-[calc(max(1rem,env(safe-area-inset-top))+3.75rem)] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-2 rounded-[6px] border border-border bg-surface/95 p-2 pl-4 text-fg backdrop-blur-sm"
+    >
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="min-w-0 flex-1 py-3 font-sans text-xs leading-5"
+      >
+        {notice}
+      </p>
+      <button
+        type="button"
+        aria-label="Dismiss message"
+        onClick={onDismiss}
+        className="flex size-11 shrink-0 items-center justify-center rounded-[6px] text-fg hover:bg-fg/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+      >
+        <X aria-hidden className="size-4" />
+      </button>
+    </div>
+  );
+}
 
 export function FumeApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const roomRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<FumeGame | null>(null);
   const [hud, setHud] = useState<HudSnapshot>(EMPTY);
-  const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [coarse, setCoarse] = useState(false);
-  const [params, setParams] = useState<SimParams>(loadParams);
-  const [look, setLook] = useState<LookState>(loadLook);
-  const [sceneId, setSceneId] = useState("shelf");
+  // Match the server markup first; the mount effect applies saved settings
+  // before starting the game, without rendering browser-only state during hydration.
+  const [params, setParams] = useState<SimParams>(() => ({ ...DEFAULT_PARAMS }));
+  const [look, setLook] = useState<LookState>(() => ({ ...DEFAULT_LOOK }));
+  const [sceneId, setSceneId] = useState("empty");
+  const [challengesOpen, setChallengesOpen] = useState(false);
+  const [completed, setCompleted] = useState<ChallengeId[]>([]);
+  const recordedCompletions = useRef(new Set<ChallengeId>());
+  const [challengeError, setChallengeError] = useState<string | null>(null);
+  const challenge = hud.challenge;
+  const challengeId = challenge?.id;
+  const challengeStatus = challenge?.status;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,10 +101,15 @@ export function FumeApp() {
     const lookNext = loadLook();
     setParams(next);
     setLook(lookNext);
+    const savedCompletions = readChallengeCompletions();
+    setCompleted(savedCompletions);
+    recordedCompletions.current = new Set(savedCompletions);
     const game = new FumeGame(canvas, setHud);
     gameRef.current = game;
     game.setParams(next);
     game.setLook(lookNext);
+    game.setMuted(true);
+    game.setPlaying(true);
     game.start();
     const mq = window.matchMedia("(pointer: coarse)");
     setCoarse(mq.matches);
@@ -59,7 +121,6 @@ export function FumeApp() {
       gameRef.current = null;
     };
     // Game owns the canvas for the session; params stream in via setParams.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -86,17 +147,26 @@ export function FumeApp() {
   }, []);
 
   useEffect(() => {
-    gameRef.current?.setPlaying(playing);
-  }, [playing]);
-
-  useEffect(() => {
     gameRef.current?.setMuted(muted);
   }, [muted]);
 
-  const begin = () => {
-    setPlaying(true);
-    gameRef.current?.setPlaying(true);
-  };
+  useEffect(() => {
+    if (!hud.sessionNotice) return;
+    setChallengesOpen(false);
+    setChallengeError(null);
+  }, [hud.sessionNotice]);
+
+  useEffect(() => {
+    if (
+      !challengeId ||
+      challengeStatus !== "complete" ||
+      recordedCompletions.current.has(challengeId)
+    )
+      return;
+    recordedCompletions.current.add(challengeId);
+    const persisted = saveChallengeCompletion(challengeId);
+    setCompleted((previous) => [...new Set([...previous, ...persisted, challengeId])]);
+  }, [challengeId, challengeStatus]);
 
   const onLook = (next: LookState) => {
     setLook(next);
@@ -116,6 +186,47 @@ export function FumeApp() {
     saveParams(next);
     gameRef.current?.setParams(next);
   };
+
+  const onChallenge = (id: ChallengeId) => {
+    const game = gameRef.current;
+    if (!game?.enterChallenge(id, loadPreset())) {
+      if (game?.getSessionNotice()) {
+        setChallengesOpen(false);
+        setChallengeError(null);
+      } else {
+        setChallengeError(
+          "The smoke is still getting ready. Try this challenge again in a moment.",
+        );
+      }
+      return;
+    }
+    setChallengeError(null);
+    setChallengesOpen(false);
+  };
+
+  const onLeaveChallenge = () => {
+    gameRef.current?.leaveChallenge();
+    setChallengeError(null);
+    setChallengesOpen(false);
+  };
+
+  const onRetryChallenge = () => {
+    const game = gameRef.current;
+    if (game?.retryChallenge()) {
+      setChallengeError(null);
+    } else if (game?.getSessionNotice()) {
+      setChallengesOpen(false);
+      setChallengeError(null);
+    } else {
+      setChallengeError(
+        "This challenge could not restart. Return to the playground and try again.",
+      );
+    }
+  };
+
+  const nextChallenge = challenge
+    ? CHALLENGES[CHALLENGES.findIndex((item) => item.id === challenge.id) + 1]
+    : undefined;
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-bg text-fg">
@@ -140,6 +251,11 @@ export function FumeApp() {
         </div>
       ) : null}
 
+      <SessionNotice
+        notice={hud.sessionNotice}
+        onDismiss={() => gameRef.current?.dismissSessionNotice()}
+      />
+
       {hud.floaters.map((f) => (
         <span
           key={f.id}
@@ -154,81 +270,66 @@ export function FumeApp() {
         </span>
       ))}
 
-      {!playing ? <TitleScreen onBegin={begin} /> : null}
+      {challenge ? <ChallengeOverlay challenge={challenge} /> : null}
+
+      <ChallengePicker
+        choices={CHALLENGES}
+        completed={completed}
+        activeId={challenge?.id ?? null}
+        open={challengesOpen}
+        onOpenChange={setChallengesOpen}
+        onChoose={onChallenge}
+        error={challengeError}
+      />
 
       <button
         type="button"
         aria-label={muted ? "Unmute" : "Mute"}
         onClick={() => setMuted((m) => !m)}
-        className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex size-11 items-center justify-center rounded-full border border-border bg-surface/70 text-fg backdrop-blur-sm transition-opacity duration-150 hover:opacity-90"
+        className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex size-11 items-center justify-center rounded-[6px] border border-border bg-surface/70 text-fg backdrop-blur-sm transition-opacity duration-150 hover:opacity-90"
       >
         {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
       </button>
 
-      <ToolDock
-        tool={hud.tool}
-        placeMode={hud.placeMode}
-        gadgetCount={hud.gadgetCount}
-        blowing={hud.blowing}
-        coarse={coarse}
-        onTool={(t: ToolKind) => gameRef.current?.setTool(t)}
-        onPlaceMode={(on) => gameRef.current?.setPlaceMode(on)}
-        onClear={() => gameRef.current?.clearPlaced()}
-        onBlow={(on) => gameRef.current?.holdBlow(on)}
-      />
+      {challenge ? (
+        <ChallengePanel
+          challenge={challenge}
+          nextLabel={nextChallenge ? "Next" : "Choose"}
+          error={challengeError}
+          onLeave={onLeaveChallenge}
+          onRetry={onRetryChallenge}
+          onNext={() => (nextChallenge ? onChallenge(nextChallenge.id) : setChallengesOpen(true))}
+          onTool={(kind) => gameRef.current?.selectChallengeTool(kind)}
+          onSelect={(id) => gameRef.current?.selectChallengeGadget(id)}
+          onAngle={(degrees) => gameRef.current?.setChallengeAngle(degrees)}
+          onRemove={() => gameRef.current?.removeChallengeGadget()}
+        />
+      ) : (
+        <>
+          <ToolDock
+            tool={hud.tool}
+            heldToolActive={hud.heldToolActive}
+            gadgetCount={hud.gadgetCount}
+            blowing={hud.blowing}
+            coarse={coarse}
+            onTool={(t: ToolKind) => gameRef.current?.setTool(t)}
+            onHeldToolActive={(on) => gameRef.current?.setHeldToolActive(on)}
+            onClear={() => gameRef.current?.clearPlaced()}
+            onBlow={(on) => gameRef.current?.holdBlow(on)}
+          />
 
-      <SimPanel
-        params={params}
-        onChange={onParams}
-        look={look}
-        onLook={onLook}
-        sceneId={sceneId}
-        onScene={onScene}
-        onKeep={onKeep}
-      />
+          <SimPanel
+            params={params}
+            onChange={onParams}
+            look={look}
+            onLook={onLook}
+            sceneId={sceneId}
+            onScene={onScene}
+            onKeep={onKeep}
+            onResetView={() => gameRef.current?.resetView()}
+          />
+        </>
+      )}
     </main>
   );
 }
-
-function TitleScreen({ onBegin }: { onBegin: () => void }) {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pb-36">
-      <div className="flex max-w-lg flex-col items-center text-center">
-        <p
-          className="fume-rise font-sans text-xs tracking-[0.28em] text-muted uppercase"
-          style={{ animation: "fume-rise 500ms var(--ease-out) both" }}
-        >
-          soap lab
-        </p>
-        <h1
-          className="fume-rise mt-3 font-display text-3xl leading-tight tracking-tight text-fg italic"
-          style={{ animation: "fume-rise 500ms var(--ease-out) 60ms both" }}
-        >
-          Fume
-        </h1>
-        <p
-          className="fume-rise mt-5 max-w-sm font-sans text-sm leading-normal text-muted"
-          style={{ animation: "fume-rise 500ms var(--ease-out) 110ms both" }}
-        >
-          Circles of smoke. Pop one and the smoke comes out. Drag a fan to aim it,
-          draw a block, and let the plume slide around it.
-        </p>
-        <button
-          type="button"
-          className="fume-rise pointer-events-auto mt-8 min-h-11 rounded-full bg-fg px-8 py-3 font-sans text-sm font-medium text-bg transition-transform duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
-          style={{ animation: "fume-rise 500ms var(--ease-out) 180ms both" }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBegin();
-          }}
-        >
-          Begin
-        </button>
-      </div>
-    </div>
-  );
-}
-
-

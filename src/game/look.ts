@@ -1,20 +1,31 @@
 export type PaletteId = "ink" | "dusk" | "blue" | "ember" | "mist" | "violet";
 export type DepthMode = "off" | "layers" | "lines" | "woods";
 export type RayMode = "off" | "shafts" | "sun";
+export type RoomStyle = "geometry" | "pixel" | "cosmos" | "stone" | "wood";
+
+export const ROOM_STYLES: { id: RoomStyle; label: string; detail: string; image: string }[] = [
+  { id: "geometry", label: "Geometry", detail: "A room drawn in light.", image: "geometry" },
+  { id: "pixel", label: "Pixel art", detail: "Quiet light, drawn in pixels.", image: "pixel-room" },
+  { id: "cosmos", label: "Cosmos", detail: "Stars at every distance.", image: "cosmos-native" },
+  { id: "stone", label: "Stone", detail: "Verde marble & brass.", image: "stone-room" },
+  { id: "wood", label: "Wood", detail: "Smoked walnut. Soft daylight.", image: "wood-room" },
+];
 
 export interface LookState {
+  roomStyle: RoomStyle;
+  dust: boolean;
   palette: PaletteId;
   pixel: boolean;
   grain: boolean;
   depth: DepthMode;
   rays: RayMode;
-  /** Stone corridor. Off leaves the flat room, and the woods layers. */
+  /** Enable the selected background. Off leaves the flat palette. */
   room: boolean;
-  /** How many stone courses run toward the door. */
+  /** Legacy saved layer preference; no longer used by the room. */
   slices: number;
-  /** How far the door sits, in corridor depth. */
+  /** Depth used by the geometry room and spatial cues. */
   roomDepth: number;
-  /** Where the smoke plane sits, 0 near the camera and 1 at the door. */
+  /** Geometry smoke plane: 0 near the camera and 1 at the back wall. */
   sceneZ: number;
   roomX: number;
   roomY: number;
@@ -30,9 +41,11 @@ export interface LookState {
 }
 
 export const DEFAULT_LOOK: LookState = {
+  roomStyle: "geometry",
+  dust: true,
   palette: "ink",
   pixel: false,
-  grain: true,
+  grain: false,
   depth: "off",
   rays: "shafts",
   room: true,
@@ -51,7 +64,8 @@ export const DEFAULT_LOOK: LookState = {
   dragging: false,
 };
 
-const STORE_KEY = "fume-look-v1";
+// A new visual direction starts clean; saved smoke parameters are independent.
+const STORE_KEY = "fume-look-v2";
 
 const PALETTES: PaletteId[] = ["ink", "dusk", "blue", "ember", "mist", "violet"];
 
@@ -60,12 +74,17 @@ export function loadLook(): LookState {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return { ...DEFAULT_LOOK };
     const parsed = JSON.parse(raw) as Partial<LookState>;
-    const palette = PALETTES.includes(parsed.palette as PaletteId) ? (parsed.palette as PaletteId) : "ink";
+    const palette = PALETTES.includes(parsed.palette as PaletteId)
+      ? (parsed.palette as PaletteId)
+      : "ink";
     const depth =
       parsed.depth === "layers" || parsed.depth === "lines" || parsed.depth === "woods"
         ? parsed.depth
         : "off";
-    const rays = parsed.rays === "shafts" || parsed.rays === "sun" ? parsed.rays : "off";
+    const rays =
+      parsed.rays === "off" || parsed.rays === "shafts" || parsed.rays === "sun"
+        ? parsed.rays
+        : DEFAULT_LOOK.rays;
     const cols = Number(parsed.pixelCols);
     const slices = Number(parsed.slices);
     const depthN = Number(parsed.roomDepth);
@@ -78,10 +97,18 @@ export function loadLook(): LookState {
       Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
     return {
       ...DEFAULT_LOOK,
+      roomStyle: ROOM_STYLES.some((s) => s.id === parsed.roomStyle)
+        ? parsed.roomStyle!
+        : "geometry",
+      dust: parsed.dust !== false,
       palette,
       pixel: Boolean(parsed.pixel),
-      pixelCols: Number.isFinite(cols) ? Math.min(480, Math.max(72, Math.round(cols))) : DEFAULT_LOOK.pixelCols,
-      slices: Number.isFinite(slices) ? Math.min(28, Math.max(6, Math.round(slices))) : DEFAULT_LOOK.slices,
+      pixelCols: Number.isFinite(cols)
+        ? Math.min(480, Math.max(72, Math.round(cols)))
+        : DEFAULT_LOOK.pixelCols,
+      slices: Number.isFinite(slices)
+        ? Math.min(28, Math.max(6, Math.round(slices)))
+        : DEFAULT_LOOK.slices,
       room: parsed.room !== false,
       roomDepth: num(depthN, 1.6, 9, DEFAULT_LOOK.roomDepth),
       sceneZ: num(sceneZ, 0.12, 0.88, DEFAULT_LOOK.sceneZ),
@@ -89,7 +116,7 @@ export function loadLook(): LookState {
       roomY: num(roomY, 0.25, 0.75, DEFAULT_LOOK.roomY),
       roomW: num(roomW, 0.35, 1.6, DEFAULT_LOOK.roomW),
       roomH: num(roomH, 0.25, 1.2, DEFAULT_LOOK.roomH),
-      grain: parsed.grain !== false,
+      grain: parsed.grain === true,
       depth,
       rays,
     };

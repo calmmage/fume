@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-12",
+  "generator": "src/game/cosmos-model.ts and src/game/wgsl/cosmos.wgsl, rendered with scripts/render-cosmos-preview.mjs",
+  "nature": "Procedurally authored using seeded 3D coordinates, coherent noise, a spiral-disc model and native GPU splats. No image model or bitmap enlargement.",
+  "points": {
+    "stars": 14000,
+    "emissionAndGalaxy": 190000,
+    "total": 204000
+  },
+  "depth": {
+    "individualStars": [
+      5,
+      160
+    ],
+    "emission": "Continuous curved volume with connected domain-warped ridges and dark channels",
+    "galaxy": "Tilted spiral disc, winding arms, stellar bulge and star-forming knots"
+  },
+  "original": "docs/style-assets/generated/cosmos-native-8k.png",
+  "originalDimensions": [
+    7680,
+    4320
+  ],
+  "webp": "docs/style-assets/generated/cosmos-native-8k.webp",
+  "webpQuality": 95,
+  "pickerPreview": "public/styles/cosmos-native.webp",
+  "pickerDimensions": [
+    1024,
+    576
+  ],
+  "runtime": "Native surface-sized GPU target; cached while the camera is stationary. The 8K preview is not loaded into the simulation.",
+  "reproduce": "node scripts/render-cosmos-preview.mjs /private/tmp/fume-cosmos-8k.png",
+  "sourceSha256": {
+    "src/game/cosmos-model.ts": "2e3380c00de5ac42e54718602894af8b0f4fcbb83d4cfbdc7c1548588715bae4",
+    "src/game/wgsl/cosmos.wgsl": "78815f89289c745669faf05fe517c3bef5f325d65c486649bdee7423a369e041"
+  }
+}

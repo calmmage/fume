@@ -1,0 +1,49 @@
+{
+  "reference": "docs/references/fume-visual-target.jpg",
+  "destination": "Google Gemini web app, msuorange account",
+  "requestedModelRoute": "Existing msuorange Google AI Pro account, Pro mode, Create image. Record actual image-model evidence and downloaded dimensions; do not repeat generation solely to obtain a model label.",
+  "requestedAspectRatio": "16:9",
+  "requestedResolution": "2K; record actual full-download dimensions rather than assume",
+  "uploadStatus": "Explicit human approval fulfilled. Reference attached to all three msuorange Gemini Pro conversations through standard image clipboard paste, with Image uploaded/thumbnail verified before submission. All three room plates saved and visually inspected; response details individually identify Nano Banana 2.1.",
+  "assets": [
+    {
+      "name": "wood-room",
+      "priority": 1,
+      "runtime": "public/styles/wood-room.webp",
+      "prompt": "Use the ATTACHED FUME image as the strict visual reference for camera framing, shallow intimate space, left window placement, darkness, and luxurious lighting. Generate only the CLEAN EMPTY ROOM BACKGROUND PLATE in 16:9 landscape at 2K resolution. Remove ALL smoke, bubbles, typography, logos, candles, tools, devices, furniture and foreground objects. Preserve the attached image's close, nearly frontal view of an intimate paneled wall; do not invent a corridor. Luxurious dark smoked walnut wall paneling with real gently recessed moulding, extremely subtle fine satin veneer grain, low-contrast warm chocolate wood almost disappearing into deep charcoal night shadows. A tall window occupies the far left portion of the image, casting soft pale warm raking light across the nearest panel edges; the central and right wall remain tranquil and very dark. Rich tactile photographic detail where light touches the fine veneer and moulding, premium cinematic architectural photograph, physically plausible material response. No visible ceiling; no floor or at most a narrow strip at the bottom. No long tunnel, wide-angle room, exaggerated perspective, repeating texture tiles, giant grain patterns, large high-contrast planks, checkerboard, rustic scratches, grime, bright orange wood or game-like render. No atmospheric smoke, fog, visible volumetric beams, bubbles, objects or text: the live game adds those separately. The result must look like the elegant empty architectural background behind the attached reference, not a texture swatch or an atlas.",
+      "status": "saved and visually inspected",
+      "actualDimensions": [
+        2752,
+        1536
+      ],
+      "model": "Nano Banana 2.1",
+      "conversation": "https://gemini.google.com/u/1/app/c22d653744ee320d?pageId=none"
+    },
+    {
+      "name": "pixel-room",
+      "priority": 2,
+      "runtime": "public/styles/pixel-room.webp",
+      "prompt": "Use the ATTACHED FUME image as the strict visual reference for shallow intimate composition, left window placement and restrained dark mood. Create a beautifully hand-drawn FINE PIXEL ART adaptation of only its empty architectural background, a finished 16:9 landscape room plate at native crisp pixel-art resolution, at least 1024 pixels wide. Remove ALL smoke, bubbles, title, text, logos, candles, tools, devices, furniture and other objects. A close nearly frontal dark paneled wall with delicate recessed moulding; a tall window at the far left and pale gold raking light on the nearby edges. Deep midnight indigo and charcoal dominate, with nuanced deliberate dithered shadows and exquisitely controlled small pixel clusters. Dark open visual space dominates the central and right wall. No visible ceiling, minimal or no visible floor. Retain the elegant calm luxury of the attached photograph in sophisticated pixel art: no giant brick tiles, gold stars, astronomical symbols, thick outlines, checkerboard or parquet pattern, long tunnel, receding corridor, broad cartoon blocks, tile atlas, photoreal textures, smoothing or gradient blur. Every mark should be intentional crisp pixel work. No smoke, haze, baked volumetric rays, bubbles or text; those are composited live by the game. One complete composed environment, not separate square texture tiles.",
+      "status": "saved and visually inspected",
+      "actualDimensions": [
+        2752,
+        1536
+      ],
+      "model": "Nano Banana 2.1",
+      "conversation": "https://gemini.google.com/u/1/app/c0a5d6fe8d2fa983?pageId=none"
+    },
+    {
+      "name": "stone-room",
+      "priority": 3,
+      "runtime": "public/styles/stone-room.webp",
+      "prompt": "Use the ATTACHED FUME image as the strict visual reference for camera framing, shallow intimate space, left window placement, deep darkness and luxurious soft lighting. Generate only the CLEAN EMPTY ROOM BACKGROUND PLATE, 16:9 landscape at 2K resolution. Remove ALL smoke, bubbles, typography, logos, candles, tools, devices, furniture and foreground objects. Replace the paneled wall material with precious polished dark Verde Alpi marble slabs: black-green stone, a few elegant quiet thin ivory veins, subtle fine brass inlay framing generous panels, refined and spacious rather than busy. Close nearly frontal wall composition with restrained real shallow moulding and slab depth. A tall window at the far left casts pale warm raking light onto nearby marble and tiny brass highlights; central and right surfaces settle into deep charcoal night shadow. Subtle physically plausible satin-polished reflection and finely resolved mineral detail only where the light touches. A premium cinematic architectural photograph, not a tiled texture render. No visible ceiling, no floor or at most a very narrow bottom strip. No long corridor, tunnel, wide-angle perspective, checkerboard, repeated small tiles, giant high-contrast veins, fragmented mosaic, bright emerald green, plastic shine, grime or game-like render. No smoke, haze, visible volumetric beams, bubbles, objects or words: the live game adds these separately. The overall intimate elegant mood must closely match the attached reference.",
+      "status": "saved and visually inspected",
+      "actualDimensions": [
+        2752,
+        1536
+      ],
+      "model": "Nano Banana 2.1",
+      "conversation": "https://gemini.google.com/u/1/app/0b65a0f3b5882cd5?pageId=none"
+    }
+  ]
+}
