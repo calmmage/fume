@@ -74,10 +74,11 @@ try {
   }
   for (const style of ["wood","stone","pixel"]) {
     const windowPixels=await render(style);
-    let minY=height,maxY=-1;
-    for(let y=0;y<height;y++)for(let x=0;x<width;x++) if(windowPixels[(y*width+x)*4]>100){minY=Math.min(minY,y);maxY=Math.max(maxY,y);}
+    let minY=height,maxY=-1,minX=width,maxX=-1;
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++) if(windowPixels[(y*width+x)*4]>100){minY=Math.min(minY,y);maxY=Math.max(maxY,y);minX=Math.min(minX,x);maxX=Math.max(maxX,x);}
     const coverage=(maxY-minY+1)/height;
-    results.push({case:"tall architectural window",style,heightFraction:coverage,pass:coverage>=.45});
+    const widthFraction=(maxX-minX+1)/width;
+    results.push({case:"full-size architectural window",style,heightFraction:coverage,widthFraction,pass:coverage>=.45&&widthFraction>=.16});
     const atLimit=await render(style,[.24,-.24],{dust_on:1});
     const overscroll=await render(style,[20,-20],{dust_on:1});
     const reversed=await render(style,[.23,-.23],{dust_on:1});

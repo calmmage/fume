@@ -91,7 +91,7 @@ export function roomCamera(width: number, height: number, look: LookState) {
 export function materialWindow(look: LookState) {
   const depth = Math.max(1.6, look.roomDepth);
   const halfHeight = 1.45 * look.roomH / 0.62;
-  return { z0: depth * 0.14, z1: depth * 0.72, y0: -halfHeight * 0.86, y1: halfHeight * 0.70 };
+  return { z0: depth * 0.14, z1: depth * 0.94, y0: -halfHeight * 0.86, y1: halfHeight * 0.70 };
 }
 
 export function roomViewConfig(width: number, height: number, look: LookState) {
