@@ -16,6 +16,8 @@ import { packGadgets } from "./tools";
 import { loadRoomMaterials } from "./materials";
 import { createContourRoom } from "./contour-room";
 import { Cosmos } from "./cosmos";
+import { SmokeProbe, type ProbeSession } from "./smoke-probe";
+import { sessionViewport } from "./session-view";
 import compositeWgsl from "./wgsl/composite.wgsl";
 
 const MAX_BALLS = 18;
@@ -36,6 +38,12 @@ function filmLutFloats(): Float32Array {
 
 export class Renderer {
   dpr = 1;
+  private parkedFluid: Fluid | null = null;
+  private sessionShape: { w: number; h: number; reduced: boolean } | null = null;
+  private probe: SmokeProbe | null = null;
+  private probeSession: ProbeSession | null = null;
+  private unavailable = false;
+  private disposed = false;
   private constructor(
     readonly gpu: Gpu,
     private surface: Surface,
@@ -81,7 +89,7 @@ export class Renderer {
     const materials = loadRoomMaterials(gpu);
     const cosmos = new Cosmos(gpu);
     await cosmos.compile();
-    return new Renderer(
+    const renderer = new Renderer(
       gpu,
       canvasSurface,
       fluid,
@@ -92,6 +100,85 @@ export class Renderer {
       createContourRoom(gpu),
       cosmos,
     );
+    void gpu.gpu.lost.then((info) => {
+      if (renderer.disposed) return;
+      renderer.unavailable = true;
+      renderer.probe?.configure(null);
+      renderer.probeSession?.onError(
+        "The GPU connection was lost. Smoke buffers cannot be restored; reload to continue.",
+      );
+      onGpuError?.(info.message || "The GPU connection was lost. Reload to continue.");
+    });
+    return renderer;
+  }
+
+  /** Keep the original ping-pong buffers, parity and seeded IDs entirely idle. */
+  enterSession(world: World, probeSession: ProbeSession): boolean {
+    if (this.disposed || this.unavailable || this.parkedFluid) return false;
+    let next: Fluid | null = null;
+    try {
+      next = createFluid(this.gpu, world.w, world.h, world.reducedMotion);
+      this.probe ??= new SmokeProbe(this.gpu);
+      this.parkedFluid = this.fluid;
+      this.fluid = next;
+      this.sessionShape = { w: world.w, h: world.h, reduced: world.reducedMotion };
+      this.probeSession = probeSession;
+      this.probe.configure(probeSession);
+      return true;
+    } catch (error) {
+      if (next) destroyFluid(next);
+      probeSession.onError(error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  }
+
+  replaceSession(world: World, probeSession: ProbeSession): boolean {
+    if (this.disposed || this.unavailable || !this.parkedFluid) return false;
+    const shape = this.sessionShape;
+    if (shape?.w === world.w && shape.h === world.h && shape.reduced === world.reducedMotion) {
+      this.probe?.configure(null);
+      try {
+        // vgpu owns compute-pass uniforms until GPU disposal. Reuse the
+        // challenge's passes and field allocation across retries instead of
+        // accumulating another set of pipeline uniforms on every attempt.
+        const f = this.fluid;
+        const buffers = [
+          f.velocity.read,
+          f.velocity.write,
+          f.dye.read,
+          f.dye.write,
+          f.pressure.read,
+          f.pressure.write,
+          f.divergence,
+          f.curl,
+          f.obst,
+        ];
+        const zeros = new Float32Array(Math.max(...buffers.map((buffer) => buffer.size)) / 4);
+        for (const buffer of buffers) buffer.write(zeros.subarray(0, buffer.size / 4));
+        f.seeded.clear();
+        this.probeSession = probeSession;
+        this.probe?.configure(probeSession);
+        return true;
+      } catch (error) {
+        this.restoreSession();
+        probeSession.onError(error instanceof Error ? error.message : String(error));
+        return false;
+      }
+    }
+    // Release the old attempt before allocating another: never three fields.
+    this.restoreSession();
+    return this.enterSession(world, probeSession);
+  }
+
+  restoreSession() {
+    this.probe?.configure(null);
+    this.probeSession = null;
+    this.sessionShape = null;
+    if (!this.parkedFluid) return;
+    const retired = this.fluid;
+    this.fluid = this.parkedFluid;
+    this.parkedFluid = null;
+    destroyFluid(retired);
   }
 
   resize(cssW: number, cssH: number, dpr: number) {
@@ -103,8 +190,11 @@ export class Renderer {
   }
 
   draw(world: World, _alpha: number, dt: number) {
+    if (this.unavailable) throw new Error("The GPU connection was lost. Reload to continue.");
     this.fluid = ensureFluidSize(this.gpu, this.fluid, world);
     stepFluid(this.fluid, world, dt);
+    const viewport = sessionViewport(this.surface.size[0], this.surface.size[1], world.w, world.h);
+    const viewDpr = viewport.width / world.w;
 
     this.materials.selectStyle(world.look.roomStyle);
     const look = world.params;
@@ -179,7 +269,7 @@ export class Renderer {
           world.look.roomStyle,
         ),
         dust_on: world.look.dust ? 1 : 0,
-        material_height: this.surface.size[1],
+        material_height: viewport.height,
       },
       balls: { xy_r_thick, modes0, modes1, pop_seed, smoke },
       gadgets,
@@ -189,14 +279,14 @@ export class Renderer {
       ...this.materials.bindings,
       ...(world.look.room && world.look.roomStyle === "geometry"
         ? {
-            environmentMap: this.contours.update(world.w, world.h, this.dpr, world.look),
+            environmentMap: this.contours.update(world.w, world.h, viewDpr, world.look),
           }
         : {}),
       ...(world.look.room && world.look.roomStyle === "cosmos"
         ? {
             environmentMap: this.cosmos.update(
-              this.surface.size[0],
-              this.surface.size[1],
+              Math.max(1, Math.round(viewport.width)),
+              Math.max(1, Math.round(viewport.height)),
               this.dpr,
               world.look,
             ),
@@ -206,15 +296,26 @@ export class Renderer {
 
     frame(this.gpu, (f) => {
       if (world.look.room && world.look.roomStyle === "cosmos") this.cosmos.render(f);
-      f.pass({ target: this.surface, clear: true }, this.composite);
+      f.pass({ target: this.surface, clear: true, viewport }, this.composite);
     });
+    try {
+      if (this.probeSession) this.probe?.sample(this.fluid, world);
+    } catch (error) {
+      this.probe?.configure(null);
+      this.probeSession?.onError(error instanceof Error ? error.message : String(error));
+    }
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.probe?.dispose();
     this.materials.dispose();
     this.contours.dispose();
     this.cosmos.dispose();
     destroyFluid(this.fluid);
+    if (this.parkedFluid) destroyFluid(this.parkedFluid);
+    this.parkedFluid = null;
     this.gpu.dispose();
   }
 }

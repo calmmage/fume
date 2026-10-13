@@ -2,8 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { FumeGame, type HudSnapshot } from "@/game/fume-game";
 import { paintLayerRoom } from "@/game/layer-room";
-import { DEFAULT_PARAMS, loadParams, saveParams, savePreset, type SimParams } from "@/game/params";
+import {
+  DEFAULT_PARAMS,
+  loadParams,
+  loadPreset,
+  saveParams,
+  savePreset,
+  type SimParams,
+} from "@/game/params";
 import { DEFAULT_LOOK, loadLook, saveLook, type LookState } from "@/game/look";
+import {
+  CHALLENGES,
+  readChallengeCompletions,
+  saveChallengeCompletion,
+  type ChallengeId,
+} from "@/game/challenges";
+import { ChallengeOverlay, ChallengePanel, ChallengePicker } from "@/components/challenge-panel";
 import { SimPanel } from "@/components/sim-panel";
 import { ToolDock } from "@/components/tool-dock";
 import type { ToolKind } from "@/game/tools";
@@ -23,6 +37,7 @@ const EMPTY: HudSnapshot = {
   tool: "candle",
   heldToolActive: true,
   gadgetCount: 0,
+  challenge: null,
 };
 
 export function FumeApp() {
@@ -37,6 +52,13 @@ export function FumeApp() {
   const [params, setParams] = useState<SimParams>(() => ({ ...DEFAULT_PARAMS }));
   const [look, setLook] = useState<LookState>(() => ({ ...DEFAULT_LOOK }));
   const [sceneId, setSceneId] = useState("empty");
+  const [challengesOpen, setChallengesOpen] = useState(false);
+  const [completed, setCompleted] = useState<ChallengeId[]>([]);
+  const recordedCompletions = useRef(new Set<ChallengeId>());
+  const [challengeError, setChallengeError] = useState<string | null>(null);
+  const challenge = hud.challenge;
+  const challengeId = challenge?.id;
+  const challengeStatus = challenge?.status;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,6 +67,9 @@ export function FumeApp() {
     const lookNext = loadLook();
     setParams(next);
     setLook(lookNext);
+    const savedCompletions = readChallengeCompletions();
+    setCompleted(savedCompletions);
+    recordedCompletions.current = new Set(savedCompletions);
     const game = new FumeGame(canvas, setHud);
     gameRef.current = game;
     game.setParams(next);
@@ -91,6 +116,18 @@ export function FumeApp() {
     gameRef.current?.setMuted(muted);
   }, [muted]);
 
+  useEffect(() => {
+    if (
+      !challengeId ||
+      challengeStatus !== "complete" ||
+      recordedCompletions.current.has(challengeId)
+    )
+      return;
+    recordedCompletions.current.add(challengeId);
+    const persisted = saveChallengeCompletion(challengeId);
+    setCompleted((previous) => [...new Set([...previous, ...persisted, challengeId])]);
+  }, [challengeId, challengeStatus]);
+
   const onLook = (next: LookState) => {
     setLook(next);
     saveLook(next);
@@ -109,6 +146,33 @@ export function FumeApp() {
     saveParams(next);
     gameRef.current?.setParams(next);
   };
+
+  const onChallenge = (id: ChallengeId) => {
+    if (!gameRef.current?.enterChallenge(id, loadPreset())) {
+      setChallengeError("The smoke is still getting ready. Try this challenge again in a moment.");
+      return;
+    }
+    setChallengeError(null);
+    setChallengesOpen(false);
+  };
+
+  const onLeaveChallenge = () => {
+    gameRef.current?.leaveChallenge();
+    setChallengeError(null);
+    setChallengesOpen(false);
+  };
+
+  const onRetryChallenge = () => {
+    setChallengeError(
+      gameRef.current?.retryChallenge()
+        ? null
+        : "This challenge could not restart. Return to the playground and try again.",
+    );
+  };
+
+  const nextChallenge = challenge
+    ? CHALLENGES[CHALLENGES.findIndex((item) => item.id === challenge.id) + 1]
+    : undefined;
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-bg text-fg">
@@ -147,6 +211,18 @@ export function FumeApp() {
         </span>
       ))}
 
+      {challenge ? <ChallengeOverlay challenge={challenge} /> : null}
+
+      <ChallengePicker
+        choices={CHALLENGES}
+        completed={completed}
+        activeId={challenge?.id ?? null}
+        open={challengesOpen}
+        onOpenChange={setChallengesOpen}
+        onChoose={onChallenge}
+        error={challengeError}
+      />
+
       <button
         type="button"
         aria-label={muted ? "Unmute" : "Mute"}
@@ -156,28 +232,45 @@ export function FumeApp() {
         {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
       </button>
 
-      <ToolDock
-        tool={hud.tool}
-        heldToolActive={hud.heldToolActive}
-        gadgetCount={hud.gadgetCount}
-        blowing={hud.blowing}
-        coarse={coarse}
-        onTool={(t: ToolKind) => gameRef.current?.setTool(t)}
-        onHeldToolActive={(on) => gameRef.current?.setHeldToolActive(on)}
-        onClear={() => gameRef.current?.clearPlaced()}
-        onBlow={(on) => gameRef.current?.holdBlow(on)}
-      />
+      {challenge ? (
+        <ChallengePanel
+          challenge={challenge}
+          nextLabel={nextChallenge ? "Next" : "Choose"}
+          error={challengeError}
+          onLeave={onLeaveChallenge}
+          onRetry={onRetryChallenge}
+          onNext={() => (nextChallenge ? onChallenge(nextChallenge.id) : setChallengesOpen(true))}
+          onTool={(kind) => gameRef.current?.selectChallengeTool(kind)}
+          onSelect={(id) => gameRef.current?.selectChallengeGadget(id)}
+          onAngle={(degrees) => gameRef.current?.setChallengeAngle(degrees)}
+          onRemove={() => gameRef.current?.removeChallengeGadget()}
+        />
+      ) : (
+        <>
+          <ToolDock
+            tool={hud.tool}
+            heldToolActive={hud.heldToolActive}
+            gadgetCount={hud.gadgetCount}
+            blowing={hud.blowing}
+            coarse={coarse}
+            onTool={(t: ToolKind) => gameRef.current?.setTool(t)}
+            onHeldToolActive={(on) => gameRef.current?.setHeldToolActive(on)}
+            onClear={() => gameRef.current?.clearPlaced()}
+            onBlow={(on) => gameRef.current?.holdBlow(on)}
+          />
 
-      <SimPanel
-        params={params}
-        onChange={onParams}
-        look={look}
-        onLook={onLook}
-        sceneId={sceneId}
-        onScene={onScene}
-        onKeep={onKeep}
-        onResetView={() => gameRef.current?.resetView()}
-      />
+          <SimPanel
+            params={params}
+            onChange={onParams}
+            look={look}
+            onLook={onLook}
+            sceneId={sceneId}
+            onScene={onScene}
+            onKeep={onKeep}
+            onResetView={() => gameRef.current?.resetView()}
+          />
+        </>
+      )}
     </main>
   );
 }
