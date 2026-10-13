@@ -1,5 +1,21 @@
 # Fume: preserve the smoke, correct the atmosphere
 
+## 13 October: optional smoke-routing challenges
+
+Petr: “Keep FUME’s current playground as the default. Add three optional, untimed puzzles where players shape actual simulated smoke using a small supplied toolkit.” “Use your kept preset, unchanged.”
+
+This is an extension of the existing FUME experience. Inherit its dark room, restrained serif headings, sans-serif controls, 44px targets and 6px corners. The signature interaction is arranging a finite kit and watching the actual original smoke find a route. The playground remains the direct entry, with Candle and muted sound. There is no new title screen, score, timer or unlock flow.
+
+Top five acceptance tasks, implemented in the challenge surface:
+
+1. **Unclear objective** → visible ring, one sentence describing the route and a short placement hint; fixed pieces carry lock labels.
+2. **Difficult touch aiming** → explicit 44px clockwise/counterclockwise buttons and a degree input, separate from dragging to move tools.
+3. **Misleading completion** → read-only GPU sampling of actual visible smoke, sustained fill/coverage thresholds, rejected stale samples and a quiet settling bar.
+4. **Shifting controls** → three fixed 44px rows and a reserved 40px feedback region through kit changes, selection, completion and retry.
+5. **Lost playground state** → park the complete World, timing accumulator and Fluid objects; restore those same objects and buffers before the first resumed step. Resizing letterboxes the retained logical domain.
+
+The [implementation boundary and measured evidence](challenges.md) describe the separate controller, unchanged kept preset, three calibrated layouts and tiny 10 Hz probe. The [journey extension](journey/index.html#challenges) covers desktop and phone entry, aiming, actual completion, retry and return. GPU loss has an explicit reload message and does not promise exact smoke restoration. The mechanics archive and installed `dev:game-mechanics` skill live separately under `~/calm/skills/library/dev/game-mechanics/`; FUME ships its own puzzle definitions and artwork.
+
 ## The visual authority
 
 “That smoke simulation was perfect.”

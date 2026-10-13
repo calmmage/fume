@@ -1,0 +1,1 @@
+Actual local browser screenshot captured 13 October 2026 through CUA after ordinary UI placement and aiming. Source revision a0cda91; viewport 1440x900. Source capture: /private/tmp/fume-challenge-shots/36-final-draft-desktop.png. Actual smoke completion, -37 degree fan, exhausted kit and enabled Next. No hidden-state injection or generated artwork.
