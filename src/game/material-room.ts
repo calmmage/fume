@@ -34,6 +34,27 @@ export function coastMaterialRoom(look: LookState, dt: number) {
   look.panVy = y !== look.parallaxY || Math.abs(look.panVy * damping) < 0.02 ? 0 : look.panVy * damping;
 }
 
+/** Stop accumulating motion when the contour camera reaches its visible range. */
+export function panGeometryRoom(look: LookState, width: number, height: number, dx: number, dy: number, dt: number) {
+  const clampX = (value: number) => Math.max(-1.5, Math.min(1.5, value));
+  const clampY = (value: number) => Math.max(-0.65, Math.min(0.65, value));
+  const beforeX = clampX(look.parallaxX), beforeY = clampY(look.parallaxY);
+  const x = beforeX + dx / Math.max(1, width), y = beforeY + dy / Math.max(1, height) * 0.42;
+  look.parallaxX = clampX(x);
+  look.parallaxY = clampY(y);
+  const k = 1 / Math.max(dt, 0.008);
+  look.panVx = x !== look.parallaxX ? 0 : Math.max(-3.2, Math.min(3.2, (look.parallaxX - beforeX) * k));
+  look.panVy = y !== look.parallaxY ? 0 : Math.max(-1.4, Math.min(1.4, (look.parallaxY - beforeY) * k));
+}
+
+export function coastGeometryRoom(look: LookState, dt: number) {
+  const vx = look.panVx, vy = look.panVy;
+  panGeometryRoom(look, 1, 1, vx * dt, vy * dt / 0.42, dt);
+  const damping = Math.exp(-1.7 * dt);
+  look.panVx = look.panVx === 0 || Math.abs(vx * damping) < 0.02 ? 0 : vx * damping;
+  look.panVy = look.panVy === 0 || Math.abs(vy * damping) < 0.02 ? 0 : vy * damping;
+}
+
 /** Camera/framing counterpart of material_room in composite.wgsl; units are room coordinates. */
 export function materialRoomCamera(width: number, height: number, look: LookState) {
   const aspect = width / Math.max(1, height);

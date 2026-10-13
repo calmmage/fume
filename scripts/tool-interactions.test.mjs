@@ -77,6 +77,19 @@ test("Empty uses identity placement even with old room framing and camera offset
   }
 });
 
+test("long Geometry scrolling stops the room and dust camera together and reverses immediately", () => {
+  const world=sim.createWorld(1000,700);
+  Object.assign(world.look,{room:true,roomStyle:"geometry"});
+  sim.panRoom(world,100_000,-100_000,.1);
+  assert.equal(world.look.parallaxX,1.5);
+  assert.equal(world.look.parallaxY,-.65);
+  assert.equal(world.look.panVx,0);
+  assert.equal(world.look.panVy,0);
+  sim.panRoom(world,-10,10,.1);
+  assert.ok(world.look.parallaxX<1.5&&world.look.parallaxY>-.65);
+  assert.ok(world.look.panVx<0&&world.look.panVy>0);
+});
+
 test("room projection keeps bubble radii circular across portrait, landscape, and room proportions", () => {
   for (const [w, h] of [[390, 844], [650, 708], [1440, 900], [900, 900]]) {
     for (const [roomW, roomH] of [[0.9, 0.62], [0.3, 1.2], [1.5, 0.3]]) {

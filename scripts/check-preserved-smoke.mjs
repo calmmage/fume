@@ -53,6 +53,17 @@ function protectedSim(source) {
   // The requested perceptible material-room pan permits only these exact
   // scoped delegates. Geometry/Cosmos pan and all simulation code still compare.
   source = source.replace('import { coastMaterialRoom, isMaterialRoom, panMaterialRoom } from "./material-room";\n', '');
+  // The user's anchoring report also permits bounded Geometry camera movement;
+  // these delegates affect only camera state, leaving all fluid stepping intact.
+  source = source.replace('import { coastGeometryRoom, coastMaterialRoom, isMaterialRoom, panGeometryRoom, panMaterialRoom } from "./material-room";\n', '');
+  source = source.replace(`  if (world.look.room && world.look.roomStyle === "geometry") {
+    panGeometryRoom(world.look, world.w, world.h, dx, dy, dt);
+    return;
+  }\n`, '');
+  source = source.replace(`  if (world.look.room && world.look.roomStyle === "geometry") {
+    coastGeometryRoom(world.look, dt);
+    return;
+  }\n`, '');
   source = source.replace(`  if (isMaterialRoom(world.look)) {
     panMaterialRoom(world.look, world.w, world.h, dx, dy, dt);
     return;

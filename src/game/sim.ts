@@ -2,7 +2,7 @@ import { DEFAULT_PARAMS, loadParams, type SimParams } from "./params";
 import { loadLook, type LookState } from "./look";
 import { sceneGadgets } from "./scenes";
 import { screenToScene } from "./scene-projection";
-import { coastMaterialRoom, isMaterialRoom, panMaterialRoom } from "./material-room";
+import { coastGeometryRoom, coastMaterialRoom, isMaterialRoom, panGeometryRoom, panMaterialRoom } from "./material-room";
 import {
   createGadget,
   hitGadget,
@@ -307,6 +307,10 @@ function syncBoundGadget(world: World, dt: number) {
 }
 
 export function panRoom(world: World, dx: number, dy: number, dt: number) {
+  if (world.look.room && world.look.roomStyle === "geometry") {
+    panGeometryRoom(world.look, world.w, world.h, dx, dy, dt);
+    return;
+  }
   if (isMaterialRoom(world.look)) {
     panMaterialRoom(world.look, world.w, world.h, dx, dy, dt);
     return;
@@ -322,6 +326,10 @@ export function panRoom(world: World, dx: number, dy: number, dt: number) {
 
 function coastRoom(world: World, dt: number) {
   if (world.look.dragging) return;
+  if (world.look.room && world.look.roomStyle === "geometry") {
+    coastGeometryRoom(world.look, dt);
+    return;
+  }
   if (isMaterialRoom(world.look)) {
     coastMaterialRoom(world.look, dt);
     return;
