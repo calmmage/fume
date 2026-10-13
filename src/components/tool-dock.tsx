@@ -60,6 +60,7 @@ export function ToolDock({
   gadgetCount,
   blowing,
   coarse,
+  roomAvailable = true,
   onTool,
   onHeldToolActive,
   onClear,
@@ -70,6 +71,7 @@ export function ToolDock({
   gadgetCount: number;
   blowing: boolean;
   coarse: boolean;
+  roomAvailable?: boolean;
   onTool: (t: ToolKind) => void;
   onHeldToolActive: (on: boolean) => void;
   onClear: () => void;
@@ -77,6 +79,8 @@ export function ToolDock({
 }) {
   const active = TOOLS.find((t) => t.id === tool) ?? TOOLS[0];
   const hasHeldDevice = tool !== "hand" && tool !== "wand";
+  const roomHint = roomAvailable ? "Scroll moves room · " : "";
+  const shortHint = tool === "hand" && !roomAvailable ? "Drag placed tools" : SHORT_HINTS[tool];
   const detailHint = coarse
     ? tool === "hand"
       ? "Tap bubbles to pop"
@@ -84,8 +88,8 @@ export function ToolDock({
         ? "Power toggles only the held tool"
         : "Release to stop blowing"
     : hasHeldDevice
-      ? "Scroll moves room · Shift-scroll size · Alt-scroll adjusts"
-      : "Scroll moves room · tap bubbles to pop";
+      ? `${roomHint}Shift-scroll size · Alt-scroll adjusts`
+      : `${roomHint}Tap bubbles to pop`;
 
   return (
     <div
@@ -98,7 +102,7 @@ export function ToolDock({
       >
         <span className="block truncate">
           {active.label}
-          <span className="text-muted"> · {SHORT_HINTS[tool]}</span>
+          <span className="text-muted"> · {shortHint}</span>
         </span>
         <span className="block truncate text-muted">{detailHint}</span>
       </p>
@@ -132,7 +136,7 @@ export function ToolDock({
             <button
               key={item.id}
               type="button"
-              title={`${item.id === "hand" ? "Drag placed tools or pan empty space" : item.id === "wand" ? toolHint(item.id) : `Click to place · ${toolHint(item.id)}`} · Scroll moves the room${ADJUST_HINTS[item.id] ? ` · ${ADJUST_HINTS[item.id]}` : ""}`}
+              title={`${item.id === "hand" ? roomAvailable ? "Drag placed tools or pan empty space" : "Drag placed tools" : item.id === "wand" ? toolHint(item.id) : `Click to place · ${toolHint(item.id)}`}${roomAvailable ? " · Scroll moves the room" : ""}${ADJUST_HINTS[item.id] ? ` · ${ADJUST_HINTS[item.id]}` : ""}`}
               aria-label={item.label}
               aria-pressed={selected}
               onClick={() => onTool(item.id)}

@@ -547,3 +547,17 @@ test("every tool and held state retains the same dock slots and blow action foot
     }
   }
 });
+
+test("Empty omits room gestures from every tool while keeping the dock footprint", () => {
+  for (const { id: tool } of TOOLS) {
+    for (const coarse of [false, true]) {
+      const props = { tool, coarse, heldToolActive: true, blowing: false, gadgetCount: 0, onTool() {}, onHeldToolActive() {}, onClear() {}, onBlow() {} };
+      const empty = ToolDock({ ...props, roomAvailable: false });
+      const room = ToolDock({ ...props, roomAvailable: true });
+      assert.doesNotMatch(renderToStaticMarkup(empty), /moves (the )?room|move the room|pan empty space/);
+      assert.match(renderToStaticMarkup(room), /Scroll moves the room/);
+      assert.deepEqual(empty.props.children.map((slot) => slot.props.className), room.props.children.map((slot) => slot.props.className));
+      assert.equal(empty.props.children[0].props.children.length, 2);
+    }
+  }
+});

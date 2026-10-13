@@ -312,6 +312,7 @@ export function FumeApp() {
             gadgetCount={hud.gadgetCount}
             blowing={hud.blowing}
             coarse={coarse}
+            roomAvailable={look.roomStyle !== "empty"}
             onTool={(t: ToolKind) => gameRef.current?.setTool(t)}
             onHeldToolActive={(on) => gameRef.current?.setHeldToolActive(on)}
             onClear={() => gameRef.current?.clearPlaced()}

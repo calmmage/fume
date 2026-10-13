@@ -723,7 +723,9 @@ fn material_floor_uv(p: vec3f, uv: vec2f) -> vec2f {
 fn material_window_uv(p: vec3f) -> vec2f {
   let bounds = config.window_bounds;
   let uv = vec2f((p.z - bounds.x) / (bounds.y - bounds.x), (p.y - bounds.z) / (bounds.w - bounds.z));
-  if (config.visual_style < 1.5) { return vec2f(0.004, 0.004) + uv * vec2f(0.032, 0.64); }
+  // Glass only: pixels (11..63, 6..160) in the incumbent 2752×1536 artwork.
+  // Its diagonal bar and frame stay outside this crop; geometry owns the mullions.
+  if (config.visual_style < 1.5) { return vec2f(0.004, 0.004) + uv * vec2f(0.019, 0.10); }
   return uv;
 }
 
