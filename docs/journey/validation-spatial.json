@@ -1,0 +1,415 @@
+{
+  "sourceRevision": "7da7b25",
+  "date": "2026-10-13",
+  "delivery": "local only; no push or deployment",
+  "checks": {
+    "focusedTests": {
+      "pass": 89,
+      "fail": 0,
+      "skip": 0
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "scopedLint": {
+      "exit": 0
+    },
+    "productionCompilation": {
+      "exit": 0
+    },
+    "preservation": {
+      "exit": 0,
+      "completeProtectedSimulationFiles": 18,
+      "protected": "Original solver, numerical defaults, bubble physics, smoke-shading helpers, frame timing and approved ray-function bodies",
+      "additionalViewExceptions": "Empty identity placement and Geometry camera-only bounded pan/coast delegates"
+    }
+  },
+  "actualGpu": {
+    "command": "node scripts/check-spatial-view.mjs",
+    "method": "Native GPU renders of actual composite shader; isolated black surfaces and white glass; full texture readbacks are diagnostic only and never run in the application",
+    "before": {
+      "checkedAt": "2026-10-13T18:45:07.721Z",
+      "results": [
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            0,
+            0
+          ],
+          "visiblePixels": 218,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            20,
+            0
+          ],
+          "visiblePixels": 0,
+          "pass": false
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            -20,
+            0
+          ],
+          "visiblePixels": 0,
+          "pass": false
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            20,
+            0.65
+          ],
+          "visiblePixels": 0,
+          "pass": false
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            -20,
+            -0.65
+          ],
+          "visiblePixels": 0,
+          "pass": false
+        },
+        {
+          "case": "tall architectural window",
+          "heightFraction": 0.2175,
+          "pass": false
+        },
+        {
+          "case": "smoke-only empty background",
+          "visiblePixels": 7612,
+          "pass": false
+        },
+        {
+          "case": "native GPU validation",
+          "errors": [],
+          "pass": true
+        }
+      ]
+    },
+    "widthBefore": {
+      "checkedAt": "2026-10-13T19:07:03.682Z",
+      "results": [
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            0,
+            0
+          ],
+          "visiblePixels": 821,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            20,
+            0
+          ],
+          "visiblePixels": 755,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            -20,
+            0
+          ],
+          "visiblePixels": 803,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            20,
+            0.65
+          ],
+          "visiblePixels": 844,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            -20,
+            -0.65
+          ],
+          "visiblePixels": 798,
+          "pass": true
+        },
+        {
+          "case": "same-depth dust follows architectural camera displacement",
+          "expectedShift": 39.80909951146196,
+          "trackedPixels": 16,
+          "matchedPixels": 16,
+          "pass": true
+        },
+        {
+          "case": "full-size architectural window",
+          "style": "wood",
+          "heightFraction": 0.7525,
+          "widthFraction": 0.0828125,
+          "pass": false
+        },
+        {
+          "case": "dust and room stop together at camera limits",
+          "style": "wood",
+          "pass": true
+        },
+        {
+          "case": "full-size architectural window",
+          "style": "stone",
+          "heightFraction": 0.7525,
+          "widthFraction": 0.0828125,
+          "pass": false
+        },
+        {
+          "case": "dust and room stop together at camera limits",
+          "style": "stone",
+          "pass": true
+        },
+        {
+          "case": "full-size architectural window",
+          "style": "pixel",
+          "heightFraction": 0.7525,
+          "widthFraction": 0.0828125,
+          "pass": false
+        },
+        {
+          "case": "dust and room stop together at camera limits",
+          "style": "pixel",
+          "pass": true
+        },
+        {
+          "case": "smoke-only empty background",
+          "visiblePixels": 0,
+          "pass": true
+        },
+        {
+          "case": "Empty still displays actual fluid density",
+          "visiblePixels": 256000,
+          "pass": true
+        },
+        {
+          "case": "native GPU validation",
+          "errors": [],
+          "pass": true
+        }
+      ]
+    },
+    "after": {
+      "checkedAt": "2026-10-13T19:33:27.792Z",
+      "results": [
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            0,
+            0
+          ],
+          "visiblePixels": 821,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            20,
+            0
+          ],
+          "visiblePixels": 755,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            -20,
+            0
+          ],
+          "visiblePixels": 803,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            20,
+            0.65
+          ],
+          "visiblePixels": 844,
+          "pass": true
+        },
+        {
+          "case": "continuous geometry dust",
+          "pan": [
+            -20,
+            -0.65
+          ],
+          "visiblePixels": 798,
+          "pass": true
+        },
+        {
+          "case": "same-depth dust follows architectural camera displacement",
+          "expectedShift": 39.80909951146196,
+          "trackedPixels": 16,
+          "matchedPixels": 16,
+          "pass": true
+        },
+        {
+          "case": "full-size architectural window",
+          "style": "wood",
+          "heightFraction": 0.7525,
+          "widthFraction": 0.18125,
+          "pass": true
+        },
+        {
+          "case": "dust and room stop together at camera limits",
+          "style": "wood",
+          "pass": true
+        },
+        {
+          "case": "full-size architectural window",
+          "style": "stone",
+          "heightFraction": 0.7525,
+          "widthFraction": 0.18125,
+          "pass": true
+        },
+        {
+          "case": "dust and room stop together at camera limits",
+          "style": "stone",
+          "pass": true
+        },
+        {
+          "case": "full-size architectural window",
+          "style": "pixel",
+          "heightFraction": 0.7525,
+          "widthFraction": 0.18125,
+          "pass": true
+        },
+        {
+          "case": "dust and room stop together at camera limits",
+          "style": "pixel",
+          "pass": true
+        },
+        {
+          "case": "smoke-only empty background",
+          "visiblePixels": 0,
+          "pass": true
+        },
+        {
+          "case": "Empty still displays actual fluid density",
+          "visiblePixels": 256000,
+          "pass": true
+        },
+        {
+          "case": "native GPU validation",
+          "errors": [],
+          "pass": true
+        }
+      ]
+    }
+  },
+  "browser": {
+    "method": "Normal CUA selection, placement, scroll and settings actions; fresh renderer reload before capture; no hidden-state or storage injection",
+    "viewports": [
+      [
+        1440,
+        900
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        1406,
+        1474
+      ]
+    ],
+    "defaultProof": "Isolated saved-state and server/hydration tests; owner browser captures normal Empty selection",
+    "captureRevisions": {
+      "277f004": "Empty, picker and Geometry captures; these paths were unchanged in the final window-width correction",
+      "f8c9a14": "Final material window captures",
+      "7da7b25": "Final reviewer-directed recaptures: Empty hints and actual textured Pixel at all required sizes; same room/Geometry steps recaptured."
+    },
+    "checks": [
+      "Empty is directly selectable and persists",
+      "Empty shows smoke/tools on black without ambient dots or rays",
+      "Empty settings hide inapplicable atmosphere controls",
+      "Wood, Stone and Pixel use the wall-relative opening",
+      "Actual native long-scroll Geometry retains dust",
+      "Material and Geometry camera limits reverse immediately",
+      "Candle/sound-off behavior preserved",
+      "Empty dock and tooltips omit room movement instructions with unchanged layout slots",
+      "Pixel samples glass only, excluding baked diagonal bar; actual texture reviewed at desktop, phone and supplied dimensions"
+    ],
+    "initialStalePreview": "An early HMR-held renderer still used old GPU code and requested empty-room.webp. Those preliminary frames were discarded; final captures start after a fresh reload.",
+    "limitations": [
+      "Perspective parallax differs with depth; a shared camera does not force all depths into one flat screen offset",
+      "Physical trackpad comfort and whole-app frame rate are not claimed",
+      "Generated material appearance and baked lighting remain from the incumbent",
+      "The white-glass GPU fixture cannot detect bars baked into textures; actual textured Pixel screenshots supply that evidence."
+    ],
+    "captureCorrection": "Initial native tall capture clipped to1406x1410; replaced by complete1406x1474 browser screenshot and required reviewer PNG copy.",
+    "challengeRegression": {
+      "puzzle": "Draft",
+      "style": "Empty",
+      "viewport": [
+        390,
+        844
+      ],
+      "fan": [
+        121,
+        464
+      ],
+      "angle": -37,
+      "progress": 100,
+      "NextEnabled": true,
+      "returnedTo": "Empty playground with the original candle",
+      "capture": "img/78-empty-challenge-phone.webp"
+    },
+    "emptyHints": {
+      "desktopHand": "Drag placed tools \u00b7 Tap bubbles to pop",
+      "phoneHand": "Drag placed tools \u00b7 Tap bubbles to pop",
+      "HandTooltip": "Drag placed tools",
+      "phoneWand": "Hold to blow \u00b7 tap bubbles to pop; Tap bubbles to pop",
+      "candle": "Tap to place a candle; Shift-scroll size \u00b7 Alt-scroll adjusts",
+      "allToolRegression": "18 desktop/phone tool combinations omit room movement copy and retain identical slot classes"
+    },
+    "warningErrorLog": [],
+    "report": {
+      "viewports": [
+        [
+          390,
+          844
+        ],
+        [
+          1440,
+          900
+        ]
+      ],
+      "latestImagesLoaded": 14,
+      "horizontalOverflow": false
+    },
+    "userReference": "../references/room-window-before.png; pixels unchanged, provenance metadata added"
+  },
+  "newScreenshotProvenance": {
+    "format": "CUA screenshots, WebP with exact origin text and tool-generated provenance sidecars",
+    "scan": {
+      "rasters": 18,
+      "missing": 0
+    }
+  },
+  "review": {
+    "initialDisposition": "fix",
+    "namedFindings": [
+      "Pixel baked diagonal window bar",
+      "Empty room movement instructions"
+    ],
+    "correctionSource": "7da7b25",
+    "verdict": "ship for the two scored fixes in the local artifact",
+    "fixes": {
+      "Pixel frame alignment": "resolved",
+      "Empty instructions": "resolved"
+    }
+  }
+}

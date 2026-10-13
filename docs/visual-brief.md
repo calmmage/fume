@@ -97,3 +97,20 @@ Top five for this correction, all implemented and pictured in the same journey r
 5. Picker artwork does not represent the actual scene → an SVG generated from the live contour model, fitted without cropping.
 
 Verified locally at code revision `26efd61`: Begin, Candle selected, muted audio, placed Candle continues with held effect off, horizontal scroll moves room contours, Wood → Geometry switching, and the updated picker. 31 focused tests, typecheck, scoped lint, preservation guard and production build pass. Static frames reuse one room texture; resize releases the previous one. This is decorative perspective geometry, not new furniture collision bodies or a replacement fluid solver.
+## 13 October: smoke-only Empty and one spatial camera
+
+Petr: “Why don't we just have an empty background, just smoke?” “the background has a window full size but the room geometry has a window very small.” “They should be anchored to each other!! They are part of the same 3D space. The whole point was to anchor the room to the space.”
+
+Keep the incumbent room styles, controls, generated artwork, actual smoke simulation and approved rays. Add a directly selectable Empty background and use it for fresh visits; preserve a returning visitor's chosen style. Correct the architectural opening and its glass/light coordinates. The room and ambient particles must use one camera; the dust field must not run out during scrolling.
+
+The five scoped frictions to close in the running local preview:
+
+1. Empty is missing → first picker choice and smoke-only black rendering.
+2. A full-height visual window becomes a small opening → tall wall-relative geometry, aligned panes and light.
+3. Room and dust use different camera transforms → one camera/framing source for both render paths.
+4. Scrolling reaches an artificial particle edge → stationary lateral lattice without the obsolete clipping box.
+5. Dust continues after the room stops → shared bounded camera and immediate reversal, verified at limits.
+
+The existing journey report must show desktop and phone evidence. Geometry retains its furniture contours; the latest request supplies an additional Empty style instead of removing a previously requested scene.
+
+Independent finish review requested two corrections: exclude Pixel's baked window frame from its glass crop, and omit room movement hints in Empty without changing the control layout. The final review packet includes actual textured Pixel captures at all three required viewports.
