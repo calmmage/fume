@@ -69,6 +69,14 @@ function mountGame(t) {
   return { game, world: game.world, snapshots, event, click };
 }
 
+test("Empty uses identity placement even with old room framing and camera offsets", () => {
+  for (const [w,h] of [[390,844],[1440,900]]) {
+    const world=sim.createWorld(w,h);
+    Object.assign(world.look,{room:true,roomStyle:"empty",parallaxX:20,parallaxY:.65,roomX:.2,roomY:.75});
+    for(const [x,y] of [[0,0],[w,h],[w*.2,h*.8]]) assert.deepEqual(sim.screenToWorld(world,x,y),{x,y});
+  }
+});
+
 test("room projection keeps bubble radii circular across portrait, landscape, and room proportions", () => {
   for (const [w, h] of [[390, 844], [650, 708], [1440, 900], [900, 900]]) {
     for (const [roomW, roomH] of [[0.9, 0.62], [0.3, 1.2], [1.5, 0.3]]) {

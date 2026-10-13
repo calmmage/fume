@@ -48,6 +48,8 @@ function protectedSim(source) {
   // mapping. Restore that exact call to the original mapping before comparing
   // the rest of sim.ts; solver and bubble behavior retain no new exceptions.
   source = source.replace('import { screenToScene } from "./scene-projection";\n', '');
+  // Empty smoke-only rendering explicitly permits identity pointer mapping.
+  source = source.replace('if (!look.room || look.roomStyle === "empty") return { x, y };', 'if (!look.room) return { x, y };');
   // The requested perceptible material-room pan permits only these exact
   // scoped delegates. Geometry/Cosmos pan and all simulation code still compare.
   source = source.replace('import { coastMaterialRoom, isMaterialRoom, panMaterialRoom } from "./material-room";\n', '');

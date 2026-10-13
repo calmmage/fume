@@ -37,6 +37,9 @@ struct Config {
   dust_on: f32,
   material_height: f32,
   visual_style: f32,
+  background_origin: vec2f,
+  background_view: vec4f,
+  window_bounds: vec4f,
 }
 
 struct Balls {
@@ -642,7 +645,7 @@ fn dust_motes(ro: vec3f, rd: vec3f, t1: f32) -> vec3f {
     let h = hash21(seed);
     let jitter = vec2f(hash21(seed + 3.4), hash21(seed + 9.1));
     let center = (cell + 0.18 + jitter * 0.64) * spacing;
-    let pixel = t / max(config.world.y, 1.0);
+    let pixel = t / max(config.world.y * config.background_view.z, 1.0);
     let radius = mix(1.1, 0.6, f32(i) / 3.0);
     let d = length(p - center) / pixel;
     let core = 1.0 - smoothstep(radius * 0.5, radius + 0.55, d);
@@ -718,8 +721,8 @@ fn material_floor_uv(p: vec3f, uv: vec2f) -> vec2f {
 }
 
 fn material_window_uv(p: vec3f) -> vec2f {
-  let windowOffset = max(0.0, config.room_depth - 2.5);
-  let uv = vec2f((p.z - windowOffset - 0.7) / 1.65, (p.y + 0.58) / 0.7);
+  let bounds = config.window_bounds;
+  let uv = vec2f((p.z - bounds.x) / (bounds.y - bounds.x), (p.y - bounds.z) / (bounds.w - bounds.z));
   if (config.visual_style < 1.5) { return vec2f(0.004, 0.004) + uv * vec2f(0.032, 0.64); }
   return uv;
 }
@@ -738,13 +741,12 @@ fn material_sample(map: texture_2d<f32>, uv: vec2f, dx: vec2f, dy: vec2f) -> vec
 
 fn material_room(uv: vec2f) -> vec3f {
   let aspect = config.world.x / max(config.world.y, 1.0);
-  let pan = clamp(config.parallax, vec2f(-0.24), vec2f(0.24));
   let hw = 1.5 * aspect * (config.room_hw / 0.9);
   let hh = 1.45 * (config.room_hh / 0.62);
   let depth = max(1.6, config.room_depth);
-  let windowOffset = max(0.0, depth - 2.5);
-  let ro = vec3f(-pan.x * aspect * 5.0 * 0.45, -pan.y * 5.0 * 0.45, 0.0);
-  let rd = vec3f((uv.x - config.room_cx) * aspect, uv.y - (config.room_cy - 0.06), 1.0);
+  let ro = vec3f(config.background_origin, 0.0);
+  let view = config.background_view;
+  let rd = vec3f((uv - view.xy) * vec2f(aspect, 1.0) / view.z, 1.0);
   var best = vec2f(depth, 5.0);
   if (abs(rd.x) > 1e-5) {
     best = nearer(best, (-hw - ro.x) / rd.x, 1.0, ro, rd, hw, hh, 0.0, depth);
@@ -766,7 +768,8 @@ fn material_room(uv: vec2f) -> vec3f {
   let at = material_face_uv(p, best.y, hw, hh, depth);
   let ax = material_face_uv(px, best.y, hw, hh, depth);
   let ay = material_face_uv(py, best.y, hw, hh, depth);
-  let toLight = vec3f(-hw + 0.05, -0.24, 1.5 + windowOffset) - p;
+  let bounds = config.window_bounds;
+  let toLight = vec3f(-hw + 0.05, (bounds.z + bounds.w) * 0.5, (bounds.x + bounds.y) * 0.5) - p;
   let diffuse = max(0.0, dot(normal, normalize(toLight)));
   let illumination = 0.12 + 0.42 * diffuse / (1.0 + length(toLight) * 0.18);
   var col = vec3f(0.0);
@@ -792,9 +795,9 @@ fn material_room(uv: vec2f) -> vec3f {
   else if (best.y < 4.5) { edge = min(depth - p.z, hw - abs(p.x)); }
   col *= 0.68 + 0.32 * smoothstep(0.0, 0.10, edge);
   if (best.y < 1.5) {
-    let windowZ = p.z - windowOffset;
-    let opening = step(-0.58, p.y) * step(p.y, 0.12) * step(0.7, windowZ) * step(windowZ, 2.35);
-    let panes = smoothstep(0.016, 0.028, abs(p.y + 0.24)) * smoothstep(0.016, 0.028, abs(windowZ - 1.5));
+    let windowUV = vec2f((p.z - bounds.x) / (bounds.y - bounds.x), (p.y - bounds.z) / (bounds.w - bounds.z));
+    let opening = step(bounds.z, p.y) * step(p.y, bounds.w) * step(bounds.x, p.z) * step(p.z, bounds.y);
+    let panes = smoothstep(0.009, 0.015, abs(windowUV.y - 0.5)) * smoothstep(0.009, 0.015, abs(windowUV.x - 0.5));
     if (opening * panes > 0.0) {
       let glassUV = material_window_uv(p);
       let glass = material_sample(windowMap, glassUV, material_window_uv(px) - glassUV, material_window_uv(py) - glassUV);
@@ -802,9 +805,11 @@ fn material_room(uv: vec2f) -> vec3f {
     }
   }
   col += dust_motes(ro, rd, best.x);
-  // Keep the accepted ray functions unchanged; translate their left wall to
-  // the wider material room in the caller's coordinates.
-  col += volume_light(ro + vec3f(hw - config.room_hw, 0.0, -windowOffset), rd, best.x);
+  // Fit the unchanged approved ray opening to this actual window. Its local
+  // geometry, glass UVs, light and dust all share the same room coordinates.
+  let rayScale = vec3f(1.0, 0.7 / (bounds.w - bounds.z), 1.65 / (bounds.y - bounds.x));
+  let rayOffset = vec3f(hw - config.room_hw, -0.58 - bounds.z * rayScale.y, 0.7 - bounds.x * rayScale.z);
+  col += volume_light(ro * rayScale + rayOffset, rd * rayScale, best.x);
   return col;
 }
 
@@ -817,12 +822,9 @@ struct RoomView {
 fn march_room(uv: vec2f) -> RoomView {
   let aspect = config.world.x / max(config.world.y, 1.0);
   let look = config.parallax;
-  let ro = vec3f(-look.x * 0.35, -look.y * 0.22, 0.0);
-  let rd = vec3f((uv.x - config.room_cx) * aspect, uv.y - config.room_cy, 1.0);
-  let hw = max(config.room_hw, 0.15);
-  let hh = max(config.room_hh, 0.12);
-  let z0 = 0.7;
-  let z1 = max(config.room_depth, z0 + 0.4);
+  let ro = vec3f(config.background_origin, 0.0);
+  let view = config.background_view;
+  let rd = vec3f((uv - view.xy) * vec2f(aspect, 1.0) / view.z, 1.0);
   if (config.visual_style > 0.5) {
     // Matches screenToWorld. Shared overscan keeps the visible corners inside
     // the fluid domain throughout the full bounded pan range.
@@ -836,17 +838,6 @@ fn march_room(uv: vec2f) -> RoomView {
     let col = material_room(uv);
     return RoomView(col, (uv - offset - 0.5) / 1.28 + 0.5, 1.0);
   }
-  var best = vec2f(1e5, 0.0);
-  if (abs(rd.x) > 1e-4) {
-    best = nearer(best, (-hw - ro.x) / rd.x, 1.0, ro, rd, hw, hh, z0, z1);
-    best = nearer(best, (hw - ro.x) / rd.x, 2.0, ro, rd, hw, hh, z0, z1);
-  }
-  if (abs(rd.y) > 1e-4) {
-    best = nearer(best, (hh - ro.y) / rd.y, 3.0, ro, rd, hw, hh, z0, z1);
-    best = nearer(best, (-hh - ro.y) / rd.y, 4.0, ro, rd, hw, hh, z0, z1);
-  }
-  best = nearer(best, (z1 - ro.z) / rd.z, 5.0, ro, rd, hw, hh, z0, z1);
-
   // The furnished backdrop does not bound the live fluid. The old room-box
   // intersection cut a rectangular ceiling through smoke and bubbles. Keep
   // every visible pixel inside the field, matching screenToScene for pointers.
@@ -855,9 +846,9 @@ fn march_room(uv: vec2f) -> RoomView {
 
   var col = textureSampleLevel(environmentMap, materialSampler, uv, 0.0).rgb;
 
-  let tDust = select(0.0, best.x, best.x < 1e4);
-  col += dust_motes(ro, rd, tDust);
-  col += volume_light(ro, rd, tDust);
+  // The old hidden box used a different projection from the contour drawing.
+  // An unbounded lateral lattice has no scrollable edge or regenerating IDs.
+  col += dust_motes(ro, rd, view.w);
   return RoomView(col, scene_uv, 1.0);
 }
 
@@ -867,7 +858,11 @@ fn fs_main(@location(0) uv_in: vec2f) -> @location(0) vec4f {
   var scene_uv = uv;
   var show_scene = 1.0;
   var col = vec3f(0.0);
-  if (config.room_on > 0.5) {
+  let empty = config.visual_style > 4.5;
+  if (empty) {
+    // Empty is intentionally smoke-only, regardless of saved atmosphere knobs.
+    col = vec3f(0.0);
+  } else if (config.room_on > 0.5) {
     let room = march_room(uv);
     col = room.color;
     scene_uv = room.scene_uv;
@@ -880,13 +875,13 @@ fn fs_main(@location(0) uv_in: vec2f) -> @location(0) vec4f {
       col += depth_color(uv);
     }
   }
-  if (config.grain > 0.5 && config.room_on < 0.5) {
+  if (!empty && config.grain > 0.5 && config.room_on < 0.5) {
     col += (hash21(uv * config.world) - 0.5) * 0.003;
   }
   let world = scene_uv * config.world + config.shake;
   let screen = uv * config.world + config.shake;
   col += ember_glow(world);
-  if (config.rays > 0.5 && config.room_on < 0.5) {
+  if (!empty && config.rays > 0.5 && config.room_on < 0.5) {
     col += light_rays(uv);
   }
   let smoke = select(vec4f(0.0), smoke_volume(scene_uv), show_scene > 0.5);

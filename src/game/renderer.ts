@@ -14,6 +14,7 @@ import { createFluid, destroyFluid, ensureFluidSize, stepFluid, type Fluid } fro
 import { interpolated, type Particle, type World } from "./sim";
 import { packGadgets } from "./tools";
 import { loadRoomMaterials } from "./materials";
+import { roomViewConfig } from "./material-room";
 import { createContourRoom } from "./contour-room";
 import { Cosmos } from "./cosmos";
 import { SmokeProbe, type ProbeSession } from "./smoke-probe";
@@ -349,11 +350,12 @@ export class Renderer {
         scene_z: world.look.sceneZ,
         room_style:
           world.look.roomStyle === "geometry" || world.look.roomStyle === "cosmos" ? 2 : 0,
-        visual_style: ["geometry", "pixel", "cosmos", "stone", "wood"].indexOf(
+        visual_style: ["geometry", "pixel", "cosmos", "stone", "wood", "empty"].indexOf(
           world.look.roomStyle,
         ),
         dust_on: world.look.dust ? 1 : 0,
         material_height: viewport.height,
+        ...roomViewConfig(world.w, world.h, world.look),
       },
       balls: { xy_r_thick, modes0, modes1, pop_seed, smoke },
       gadgets,

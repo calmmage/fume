@@ -1,9 +1,10 @@
 export type PaletteId = "ink" | "dusk" | "blue" | "ember" | "mist" | "violet";
 export type DepthMode = "off" | "layers" | "lines" | "woods";
 export type RayMode = "off" | "shafts" | "sun";
-export type RoomStyle = "geometry" | "pixel" | "cosmos" | "stone" | "wood";
+export type RoomStyle = "empty" | "geometry" | "pixel" | "cosmos" | "stone" | "wood";
 
 export const ROOM_STYLES: { id: RoomStyle; label: string; detail: string; image: string }[] = [
+  { id: "empty", label: "Empty", detail: "Just smoke on black.", image: "" },
   { id: "geometry", label: "Geometry", detail: "A room drawn in light.", image: "geometry" },
   { id: "pixel", label: "Pixel art", detail: "Quiet light, drawn in pixels.", image: "pixel-room" },
   { id: "cosmos", label: "Cosmos", detail: "Stars at every distance.", image: "cosmos-native" },
@@ -41,7 +42,7 @@ export interface LookState {
 }
 
 export const DEFAULT_LOOK: LookState = {
-  roomStyle: "geometry",
+  roomStyle: "empty",
   dust: true,
   palette: "ink",
   pixel: false,
@@ -99,7 +100,7 @@ export function loadLook(): LookState {
       ...DEFAULT_LOOK,
       roomStyle: ROOM_STYLES.some((s) => s.id === parsed.roomStyle)
         ? parsed.roomStyle!
-        : "geometry",
+        : DEFAULT_LOOK.roomStyle,
       dust: parsed.dust !== false,
       palette,
       pixel: Boolean(parsed.pixel),

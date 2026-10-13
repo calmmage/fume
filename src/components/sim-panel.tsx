@@ -169,7 +169,7 @@ export function SimPanel({
 
               <section className="mt-6">
                 <p className="mb-2 font-sans text-xs tracking-[0.18em] text-subtle uppercase">Room</p>
-                <p className="mb-1.5 font-sans text-xs text-muted">Mood</p>
+                {look.roomStyle !== "empty" ? <><p className="mb-1.5 font-sans text-xs text-muted">Mood</p>
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   {(
                     [
@@ -190,18 +190,19 @@ export function SimPanel({
                     </Chip>
                   ))}
                 </div>
+                </> : null}
                 <div className="mb-3 flex flex-wrap gap-1.5">
-                  <Chip
+                  {look.roomStyle !== "empty" ? <Chip
                     pressed={look.room}
                     label="Show the selected background. Turn off to reveal the flat or forest background."
                     onClick={() => onLook({ ...look, room: !look.room })}
                   >
                     Room
-                  </Chip>
-                  <Chip pressed={look.grain} onClick={() => onLook({ ...look, grain: !look.grain })}>
+                  </Chip> : null}
+                  {look.roomStyle !== "empty" ? <Chip pressed={look.grain} onClick={() => onLook({ ...look, grain: !look.grain })}>
                     Grain
-                  </Chip>
-                  {(!look.room || look.roomStyle !== "cosmos") && (
+                  </Chip> : null}
+                  {look.roomStyle !== "empty" && (!look.room || look.roomStyle !== "cosmos") && (
                     <Chip pressed={look.dust} onClick={() => onLook({ ...look, dust: !look.dust })}>
                       Spatial points
                     </Chip>
@@ -214,9 +215,9 @@ export function SimPanel({
                     ))}
                     <button type="button" onClick={onResetView} className="min-h-11 rounded-[6px] px-3 font-sans text-xs text-fg underline underline-offset-4">Reset view</button>
                   </div>
-                  <p className="mb-4 font-sans text-xs leading-relaxed text-muted">Small points stay fixed in the room as you move. These controls change the atmosphere, not the smoke.</p>
+                  <p className="mb-4 font-sans text-xs leading-relaxed text-muted">{look.roomStyle === "empty" ? "Empty shows smoke and tools on black. Choose a room to add an atmosphere." : "Small points stay fixed in the room as you move. These controls change the atmosphere, not the smoke."}</p>
                 </> : null}
-                {look.room ? (
+                {look.roomStyle === "empty" ? null : look.room ? (
                   <div className="mb-3 flex flex-col gap-2.5">
                     <Range
                       label="Depth"
@@ -285,7 +286,7 @@ export function SimPanel({
                     </div>
                   </>
                 )}
-                {(!look.room || (look.roomStyle !== "geometry" && look.roomStyle !== "cosmos")) ? <>
+                {look.roomStyle !== "empty" && (!look.room || (look.roomStyle !== "geometry" && look.roomStyle !== "cosmos")) ? <>
                 <p className="mb-1.5 font-sans text-xs text-muted">Light</p>
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   {(

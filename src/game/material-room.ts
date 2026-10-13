@@ -47,3 +47,38 @@ export function materialRoomCamera(width: number, height: number, look: LookStat
     y: -bounded(look.parallaxY) * 5 * MATERIAL_PAN_GAIN,
   };
 }
+
+/** The same camera is used to draw the room and project its stationary dust. */
+export function roomCamera(width: number, height: number, look: LookState) {
+  const aspect = width / Math.max(1, height);
+  if (look.roomStyle === "geometry") {
+    const spread = Math.max(0.48, Math.min(1, aspect / 1.5));
+    return {
+      x: -Math.tanh(look.parallaxX) * 0.75 * spread,
+      y: -Math.tanh(look.parallaxY * 2) * 0.48,
+      centerX: look.roomX,
+      centerY: look.roomY - (aspect < 0.8 ? 0.12 : 0.07),
+      focal: Math.min(1, aspect / 0.8),
+      depth: 7 * look.roomDepth / 5,
+      spread,
+    };
+  }
+  return { ...materialRoomCamera(width, height, look), focal: 1, spread: 1 };
+}
+
+/** A tall architectural opening, sized with the wall rather than a small decal. */
+export function materialWindow(look: LookState) {
+  const depth = Math.max(1.6, look.roomDepth);
+  const halfHeight = 1.45 * look.roomH / 0.62;
+  return { z0: depth * 0.14, z1: depth * 0.72, y0: -halfHeight * 0.86, y1: halfHeight * 0.70 };
+}
+
+export function roomViewConfig(width: number, height: number, look: LookState) {
+  const camera = roomCamera(width, height, look);
+  const opening = materialWindow(look);
+  return {
+    background_origin: [camera.x, camera.y],
+    background_view: [camera.centerX, camera.centerY, camera.focal, camera.depth],
+    window_bounds: [opening.z0, opening.z1, opening.y0, opening.y1],
+  };
+}

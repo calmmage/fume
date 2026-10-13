@@ -16,10 +16,10 @@ function storage(t, values = {}) {
   return store;
 }
 
-test("fresh and returning old-style users start with black Geometry and no grain", (t) => {
+test("fresh and obsolete-style users start with smoke-only Empty and no grain", (t) => {
   storage(t, { "fume-look-v1": JSON.stringify({ roomStyle: "studio", grain: true, room: false }) });
   assert.deepEqual(loadLook(), DEFAULT_LOOK);
-  assert.equal(loadLook().roomStyle, "geometry");
+  assert.equal(loadLook().roomStyle, "empty");
   assert.equal(loadLook().grain, false);
   assert.equal(loadLook().room, true);
 });
@@ -40,7 +40,7 @@ test("corrupt and obsolete new-style preferences recover to valid defaults", (t)
   const store = storage(t, { "fume-look-v2": "corrupt" });
   assert.deepEqual(loadLook(), DEFAULT_LOOK);
   store.set("fume-look-v2", JSON.stringify({ roomStyle: "contours", roomDepth: 100, roomW: -10 }));
-  assert.equal(loadLook().roomStyle, "geometry");
+  assert.equal(loadLook().roomStyle, "empty");
   assert.equal(loadLook().roomDepth, 9);
   assert.equal(loadLook().roomW, 0.35);
 });

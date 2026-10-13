@@ -1,5 +1,6 @@
 import { texture, type Gpu, type Texture } from "vgpu";
 import type { LookState } from "./look";
+import { roomCamera } from "./material-room";
 
 type Point = readonly [number, number, number];
 type Face = { points: Point[]; fill: boolean; tone: number; width: number; screen: boolean };
@@ -327,16 +328,15 @@ export function drawContourRoom(
   look: LookState,
   dpr: number,
 ) {
-  const aspect = w / h;
   // A narrower furnished room on a phone, rather than cropping away both sofas.
-  const spread = Math.max(0.48, Math.min(1, aspect / 1.5));
-  const focal = Math.min(1, aspect / 0.8);
+  const camera = roomCamera(w, h, { ...look, roomStyle: "geometry" });
+  const { spread, focal } = camera;
   const sx = spread * (look.roomW / 0.9);
   const sy = look.roomH / 0.62;
   const sz = look.roomDepth / 5;
-  const cameraX = -Math.tanh(look.parallaxX) * 0.75 * spread;
-  const cameraY = -Math.tanh(look.parallaxY * 2) * 0.48;
-  const centerY = look.roomY - (aspect < 0.8 ? 0.12 : 0.07);
+  const cameraX = camera.x;
+  const cameraY = camera.y;
+  const centerY = camera.centerY;
   const project = ([x, y, z]: Point): [number, number] => [
     w * look.roomX + ((x * sx - cameraX) * h * focal) / (z * sz),
     h * centerY + ((y * sy - cameraY) * h * focal) / (z * sz),

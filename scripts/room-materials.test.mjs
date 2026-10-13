@@ -35,7 +35,7 @@ function fixture(t, respond) {
 const ok = () => ({ ok: true, blob: async () => ({}) });
 const settle = () => new Promise(setImmediate);
 
-test("Geometry and native Cosmos stay network-free; failed environment maps retry with bounded requests", async (t) => {
+test("Empty, Geometry and native Cosmos stay network-free; failed environment maps retry with bounded requests", async (t) => {
   let attempts = 0;
   const { materials, requests, advance } = fixture(t, (url) => {
     if (url.includes("stone-room") && attempts++ === 0) return { ok: false, status: 503 };
@@ -43,6 +43,7 @@ test("Geometry and native Cosmos stay network-free; failed environment maps retr
   });
   materials.selectStyle("geometry");
   materials.selectStyle("cosmos");
+  materials.selectStyle("empty");
   await settle();
   assert.equal(requests.length, 0);
   materials.selectStyle("stone");

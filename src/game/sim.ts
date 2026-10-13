@@ -338,7 +338,7 @@ function coastRoom(world: World, dt: number) {
 
 export function screenToWorld(world: World, x: number, y: number) {
   const look = world.look;
-  if (!look.room) return { x, y };
+  if (!look.room || look.roomStyle === "empty") return { x, y };
   if (look.roomStyle !== "geometry") {
     return {
       x: ((x / world.w - Math.tanh(look.parallaxX) * 0.11 - 0.5) / 1.28 + 0.5) * world.w,

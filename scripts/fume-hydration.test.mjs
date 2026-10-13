@@ -50,7 +50,7 @@ test("first render is identical with server defaults and persisted browser setti
   t.after(() => { globalThis.localStorage = previous; });
   delete globalThis.localStorage;
   const server = renderToString(createElement(FumeApp));
-  assert.match(server, /Background style: Geometry/);
+  assert.match(server, /Background style: Empty/);
   for (const roomStyle of ["pixel", "wood", "stone", "cosmos"]) {
     let reads = 0;
     const saved = new Map([

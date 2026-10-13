@@ -22,8 +22,8 @@ export function StylePicker({ look, onLook }: { look: LookState; onLook: (next: 
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {ROOM_STYLES.map((style) => (
-              <button key={style.id} type="button" aria-label={`${style.label} background`} aria-pressed={look.room && style.id === look.roomStyle} onClick={() => { onLook({ ...look, room: true, roomStyle: style.id, pixel: false, grain: false }); setOpen(false); }} className={cn("group relative overflow-hidden rounded-[6px] border text-left transition-colors hover:border-white/60", style.id === look.roomStyle ? "border-white/80" : "border-white/10", style.id === "geometry" && "col-span-2")}>
-                <img src={`/styles/${style.image}.${style.id === "geometry" ? "svg" : "webp"}`} alt="" className={cn("w-full", style.id === "geometry" ? "h-24 object-contain bg-black" : "h-20 object-cover")} />
+              <button key={style.id} type="button" aria-label={`${style.label} background`} aria-pressed={look.room && style.id === look.roomStyle} onClick={() => { onLook({ ...look, room: true, roomStyle: style.id, pixel: false, grain: false }); setOpen(false); }} className={cn("group relative overflow-hidden rounded-[6px] border text-left transition-colors hover:border-white/60", style.id === look.roomStyle ? "border-white/80" : "border-white/10")}>
+                {style.id === "empty" ? <div aria-hidden="true" className="h-20 w-full bg-black" /> : <img src={`/styles/${style.image}.${style.id === "geometry" ? "svg" : "webp"}`} alt="" className={cn("h-20 w-full", style.id === "geometry" ? "object-contain bg-black" : "object-cover")} />}
                 <div className="bg-black/30 px-3 py-2.5"><span className="block font-sans text-sm">{style.label}</span><span className="mt-0.5 block font-sans text-[11px] text-white/50">{style.detail}</span></div>
                 {style.id === look.roomStyle && <Check className="absolute top-2 right-2 size-5 rounded-full bg-white p-1 text-black" />}
               </button>

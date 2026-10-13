@@ -105,7 +105,7 @@ export function loadRoomMaterials(gpu: Gpu) {
     };
     const surface = style === "wood" ? "walnut" : style === "stone" ? "marble" : "pixel-room";
     const maps: ["environmentMap" | "wallMap" | "floorMap" | "windowMap", string][] =
-      style === "geometry" || style === "cosmos" ? [] : [
+      style === "empty" || style === "geometry" || style === "cosmos" ? [] : [
         ["environmentMap", `${style}-room`],
         ["wallMap", surface],
         ["floorMap", surface],

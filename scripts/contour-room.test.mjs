@@ -6,6 +6,7 @@ import ts from "typescript";
 
 registerHooks({
   resolve(specifier, context, next) {
+    if (specifier === "./material-room") return { shortCircuit: true, url: cameraUrl };
     if (specifier === "vgpu") return {
       shortCircuit: true,
       url: "data:text/javascript,export const texture=(_gpu,options)=>({gpu:{},options,destroyed:false,destroy(){this.destroyed=true}})",
@@ -13,11 +14,28 @@ registerHooks({
     return next(specifier, context);
   },
 });
+const cameraUrl = `data:text/javascript;base64,${Buffer.from(ts.transpileModule(readFileSync(new URL("../src/game/material-room.ts",import.meta.url),"utf8"), {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText).toString("base64")}`;
+const {roomCamera, roomViewConfig} = await import(cameraUrl);
 const source = ts.transpileModule(readFileSync(new URL("../src/game/contour-room.ts", import.meta.url), "utf8"), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
-const { createContourRoom } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { createContourRoom, drawContourRoom } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const look = { roomX: 0.5, roomY: 0.5, roomW: 0.9, roomH: 0.62, roomDepth: 5, parallaxX: 0, parallaxY: 0 };
+
+test("the drawn architectural corner and shader dust use one camera, including scroll limits", () => {
+  for (const [w,h] of [[390,844],[1440,900]]) for (const pan of [-20,-.2,0,.2,20]) {
+    const state={...look,roomStyle:"geometry",parallaxX:pan,parallaxY:.65};
+    const points=[];
+    const ctx={setTransform(){},fillRect(){},beginPath(){},moveTo(x,y){points.push([x,y]);},lineTo(x,y){points.push([x,y]);},closePath(){},fill(){},stroke(){}};
+    drawContourRoom(ctx,w,h,state,1);
+    const camera=roomCamera(w,h,state);
+    const config=roomViewConfig(w,h,state);
+    assert.deepEqual(config.background_origin,[camera.x,camera.y]);
+    const depth=config.background_view[3];
+    const expected=[w*camera.centerX+(-3.2*camera.spread-camera.x)*h*camera.focal/depth,h*camera.centerY+(-2-camera.y)*h*camera.focal/depth];
+    assert.ok(points.some(p=>Math.hypot(p[0]-expected[0],p[1]-expected[1])<1e-8), "actual drawn shell must use the camera passed to dust");
+  }
+});
 
 function fixture(t) {
   let uploads = 0;
