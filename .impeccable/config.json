@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "aphoristic-cadence",
+        "value": "*",
+        "files": [
+          "docs/journey/index.html"
+        ],
+        "createdAt": "2026-10-13T18:37:42.052Z",
+        "reason": "Agent review: this journey is a dated validation and limitation record, not marketing copy. The detector cites Native and library error arrays are empty. No hardware memory exhaustion was attempted: these are separate evidence boundaries required to distinguish bounded GPU faults from real hardware exhaustion. Earlier factual negatives document preserved behavior, local-only delivery and unverified hardware/performance. Preserve these claims and historical user quotations; other design rules remain active."
+      }
+    ]
+  }
+}
