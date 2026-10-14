@@ -20,6 +20,18 @@ The original fluid solver, numerical defaults, smoke-shading functions, bubbles 
 
 ## Verification
 
+### 14 October: correct the remaining baked window surround
+
+Petr rejected the remaining bright strip on the back wall: “CANT YOU LIKE.. FIND EXACT PLACE WHERE THE BACKGROUND WALL CHANGES FROM BLACK TO WHITE PIXELS?!” The previous 12% crop started at source column 330 and retained the illuminated return around the authored window. The white-glass GPU fixture could not detect this artwork defect.
+
+`scripts/check-window-boundaries.py` now measures the actual 2752×1536 source pixels. It takes column medians across rows 219–768, finds the terminal strong bright-to-dark edge in the left architectural region, then starts at the next sustained 16-column dark band: Wood 419, Stone 449 and Pixel 418. These thresholds are specific to the three incumbent artworks; new artwork requires visual review.
+
+The script produces lossless `*-back-wall.webp` crops with source SHA-256 and exact crop rectangles in their sidecars. Original generated artwork remains intact. The runtime loads these wall-only maps and applies aspect-preserving cover to the whole cropped image. Window pixels are physically absent before mip generation, so resizing, camera motion and texture filtering cannot reintroduce the surplus surround. Side-wall geometry remains the sole window, with its existing glass, mullions and approved light functions.
+
+The measurement command failed against the old runtime mappings and passes against all three exact decoded crops. Normal UI captures show actual textures at 1440×900, 390×844 and the supplied 664×640 image size, plus Wood after native scrolling. The 89 focused tests, typecheck, scoped lint, compilation and original-smoke preservation guard pass. The native GPU regression remains useful for geometry/dust/Empty behavior, while the real textured captures and pixel checks establish this artwork correction. See the [latest journey](journey/index.html#measured-window).
+
+### Historical 13 October measurements
+
 `scripts/check-spatial-view.mjs` renders the actual composite shader with isolated inputs on the native GPU. Before the fix, Geometry dust fell from 218 visible pixels to zero after long horizontal scrolling, the window occupied 21.75% of frame height, and Empty was missing. Afterward, the same long-scroll cases retain 755–844 visible pixels, the architectural opening spans 75.25% of frame height and 18.125% of width in Wood, Stone and Pixel, and Empty emits zero background pixels while still displaying actual fluid density.
 
 Phone inspection also caught a remaining narrow opening; its width rose from 8.28% to 18.125% of the diagnostic frame, filling most of the 20% side wall.

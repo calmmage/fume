@@ -1,0 +1,35 @@
+14 October 2026 — local source 9f25dd0
+
+Pixel regression:
+Bundled workspace Python + Pillow: scripts/check-window-boundaries.py
+Before: exit 1, all three runtime wall samples start at source column 330,
+which retains the bright authored window return.
+After: exit 0; Wood 419, Stone 449, Pixel 418. All three decoded outputs are
+pixel-identical lossless crops of unchanged incumbent artwork.
+Detailed before/after receipts are adjacent JSON files.
+
+Focused tests: 89 passed, 0 failures, 0 skips.
+Typecheck: npm run typecheck — exit 0.
+Scoped lint: eslint src/game/materials.ts scripts/room-materials.test.mjs — exit 0.
+Production compilation: node scripts/with-app-env.mjs ./node_modules/.bin/vite build — exit 0.
+Preservation: node scripts/check-preserved-smoke.mjs — exit 0.
+Native GPU: node scripts/check-spatial-view.mjs — exit 0, validation errors [].
+Manual scoped Impeccable detector: [] — exit 0.
+
+Actual rendered evidence: eight IAB screenshots, 81–88, taken after a fresh
+renderer reload with ordinary UI selection/placement/native scrolling.
+Sizes: 1440x900, 390x844, and the supplied 664x640 screenshot dimensions.
+Wood/Stone/Pixel all inspected visually; detached bright back-wall return absent.
+Browser warning/error logs: []. Desktop DOM horizontal overflow: false.
+
+The native GPU fixture isolates geometry/dust/Empty with plain input maps.
+It is preservation evidence, not proof about the textured wall. The source-pixel
+comparison and actual textured screenshots provide that proof.
+Original image pixels, solver, tuning, rays and camera are preserved.
+No deployment, owner acceptance, photographic realism or app FPS claim.
+
+Independent reviewer: ship for this local correction; eight captures and all three
+map sources inspected, read-only boundary/hash/pixel checks independently rerun.
+Wood alone has reference-size and after-pan visual captures.
+Report: nine latest images loaded at 390x844 and 1440x900; no horizontal overflow.
+Native state refresh confirms the complete desktop before/after comparison.
