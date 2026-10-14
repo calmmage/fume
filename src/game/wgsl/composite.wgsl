@@ -696,13 +696,13 @@ fn material_face_uv(p: vec3f, face: f32, hw: f32, hh: f32, depth: f32) -> vec2f 
 }
 
 fn material_back_uv(uv: vec2f, hw: f32, hh: f32) -> vec2f {
-  // The authored plate appears once. Its baked left window is replaced by the
-  // actual side-wall opening, and cover preserves the fine grain/pixel aspect.
+  // Pixel-measured crops contain only the back wall. The original bright
+  // window surround is excluded before mip generation, at every viewport/pan.
   let size = vec2f(textureDimensions(environmentMap));
-  let imageAspect = size.x * 0.88 / max(size.y, 1.0);
+  let imageAspect = size.x / max(size.y, 1.0);
   let faceAspect = hw / hh;
   let cover = vec2f(min(1.0, faceAspect / imageAspect), min(1.0, imageAspect / faceAspect));
-  return vec2f(0.12, 0.0) + ((uv - 0.5) * cover + 0.5) * vec2f(0.88, 1.0);
+  return (uv - 0.5) * cover + 0.5;
 }
 
 fn material_wall_uv(p: vec3f, uv: vec2f) -> vec2f {

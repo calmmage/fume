@@ -1,0 +1,22 @@
+{
+  "source": "stone-room.webp",
+  "sourceSha256": "236d7a70a408d3fb010ea34ad3e95a4ce4c3adf9a65fd3a93db7ed94bb802841",
+  "sourceSize": [
+    2752,
+    1536
+  ],
+  "crop": [
+    449,
+    0,
+    2752,
+    1536
+  ],
+  "method": "terminal bright-to-dark column edge followed by 16 dark columns",
+  "measurement": {
+    "terminalEdge": 445,
+    "wallStart": 449,
+    "darkBandWidth": 16,
+    "darkBandMaximum": 64.66666666666667
+  },
+  "kind": "lossless crop of incumbent generated artwork"
+}

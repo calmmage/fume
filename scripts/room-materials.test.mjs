@@ -38,7 +38,7 @@ const settle = () => new Promise(setImmediate);
 test("Empty, Geometry and native Cosmos stay network-free; failed environment maps retry with bounded requests", async (t) => {
   let attempts = 0;
   const { materials, requests, advance } = fixture(t, (url) => {
-    if (url.includes("stone-room") && attempts++ === 0) return { ok: false, status: 503 };
+    if (url.includes("stone-back-wall") && attempts++ === 0) return { ok: false, status: 503 };
     return ok();
   });
   materials.selectStyle("geometry");
@@ -56,8 +56,8 @@ test("Empty, Geometry and native Cosmos stay network-free; failed environment ma
   assert.equal(materials.bindings.environmentMap, neutral, "neutral remains visible during retry");
   await settle();
   assert.notEqual(materials.bindings.environmentMap, neutral);
-  assert.equal(materials.bindings.environmentMap.label, "/styles/stone-room.webp");
-  assert.equal(requests.filter((url) => url.includes("stone-room")).length, 2);
+  assert.equal(materials.bindings.environmentMap.label, "/styles/stone-back-wall.webp");
+  assert.equal(requests.filter((url) => url.includes("stone-back-wall")).length, 2);
   advance(100_000);
   materials.selectStyle("stone");
   await settle();
@@ -79,15 +79,15 @@ test("reselecting a style retries a failed map immediately", async (t) => {
   materials.selectStyle("geometry");
   materials.selectStyle("pixel");
   await settle();
-  assert.equal(requests.length, 2);
-  assert.equal(materials.bindings.environmentMap.label, "/styles/pixel-room.webp");
+  assert.equal(requests.length, 4);
+  assert.equal(materials.bindings.environmentMap.label, "/styles/pixel-back-wall.webp");
 });
 
 test("photographic rooms reuse their generated surface maps; Pixel only uses its authored room", async (t) => {
   const { materials, requests } = fixture(t, ok);
   materials.selectStyle("wood");
   await settle();
-  assert.deepEqual(requests, ["/styles/wood-room.webp", "/styles/walnut.webp", "/styles/window.webp"]);
+  assert.deepEqual(requests, ["/styles/wood-back-wall.webp", "/styles/walnut.webp", "/styles/window.webp"]);
   assert.equal(materials.bindings.wallMap.label, "/styles/walnut.webp");
   assert.equal(materials.bindings.wallMap, materials.bindings.floorMap, "wall and floor share a GPU texture");
   materials.selectStyle("stone");
@@ -97,7 +97,8 @@ test("photographic rooms reuse their generated surface maps; Pixel only uses its
   assert.equal(requests.filter(url => url.endsWith("/window.webp")).length, 1, "window map is shared between styles");
   materials.selectStyle("pixel");
   await settle();
-  for (const key of ["environmentMap", "wallMap", "floorMap", "windowMap"]) {
+  assert.equal(materials.bindings.environmentMap.label, "/styles/pixel-back-wall.webp");
+  for (const key of ["wallMap", "floorMap", "windowMap"]) {
     assert.equal(materials.bindings[key].label, "/styles/pixel-room.webp");
   }
   assert.equal(requests.filter(url => url.endsWith("/pixel-room.webp")).length, 1);
@@ -106,13 +107,14 @@ test("photographic rooms reuse their generated surface maps; Pixel only uses its
 
 test("late surface and window downloads cannot replace the newly selected room", async (t) => {
   const pending = [];
-  const { materials } = fixture(t, url => url.includes("pixel-room") ? ok() : new Promise(resolve => pending.push(resolve)));
+  const { materials } = fixture(t, url => url.includes("pixel-") ? ok() : new Promise(resolve => pending.push(resolve)));
   materials.selectStyle("wood");
   materials.selectStyle("pixel");
   await settle();
   for (const finish of pending) finish(ok());
   await settle();
-  for (const key of ["environmentMap", "wallMap", "floorMap", "windowMap"]) {
+  assert.equal(materials.bindings.environmentMap.label, "/styles/pixel-back-wall.webp");
+  for (const key of ["wallMap", "floorMap", "windowMap"]) {
     assert.equal(materials.bindings[key].label, "/styles/pixel-room.webp");
   }
 });
@@ -120,8 +122,8 @@ test("late surface and window downloads cannot replace the newly selected room",
 test("persistent failure backs off, and old style results cannot overwrite the selected style", async (t) => {
   let finishStone;
   const { materials, requests, advance } = fixture(t, (url) => {
-    if (url.includes("stone-room")) return new Promise((resolve) => { finishStone = resolve; });
-    if (url.includes("pixel-room")) return { ok: false, status: 503 };
+    if (url.includes("stone-back-wall")) return new Promise((resolve) => { finishStone = resolve; });
+    if (url.includes("pixel-")) return { ok: false, status: 503 };
     return ok();
   });
   materials.selectStyle("stone");

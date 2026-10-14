@@ -1,0 +1,22 @@
+{
+  "source": "wood-room.webp",
+  "sourceSha256": "8ca430f29466eaeadd79795952512e5c02407f129cddb8d9662b4269de75000a",
+  "sourceSize": [
+    2752,
+    1536
+  ],
+  "crop": [
+    419,
+    0,
+    2752,
+    1536
+  ],
+  "method": "terminal bright-to-dark column edge followed by 16 dark columns",
+  "measurement": {
+    "terminalEdge": 415,
+    "wallStart": 419,
+    "darkBandWidth": 16,
+    "darkBandMaximum": 55.666666666666664
+  },
+  "kind": "lossless crop of incumbent generated artwork"
+}
