@@ -1,0 +1,42 @@
+{
+  "measurementRows": [
+    219,
+    768,
+    8
+  ],
+  "results": [
+    {
+      "style": "wood",
+      "terminalEdge": 415,
+      "wallStart": 419,
+      "darkBandWidth": 16,
+      "darkBandMaximum": 55.666666666666664,
+      "firstSourceColumn": 330,
+      "excludedWindowPixels": false,
+      "exactLosslessCrop": false,
+      "pass": false
+    },
+    {
+      "style": "stone",
+      "terminalEdge": 445,
+      "wallStart": 449,
+      "darkBandWidth": 16,
+      "darkBandMaximum": 64.66666666666667,
+      "firstSourceColumn": 330,
+      "excludedWindowPixels": false,
+      "exactLosslessCrop": false,
+      "pass": false
+    },
+    {
+      "style": "pixel",
+      "terminalEdge": 414,
+      "wallStart": 418,
+      "darkBandWidth": 16,
+      "darkBandMaximum": 25.333333333333332,
+      "firstSourceColumn": 330,
+      "excludedWindowPixels": false,
+      "exactLosslessCrop": false,
+      "pass": false
+    }
+  ]
+}

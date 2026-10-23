@@ -402,14 +402,22 @@ function insertBeforeHeadClose(html, snippet) {
 
 export function normalizeHeadContext(ctx = {}) {
   const cwd = ctx.cwd ?? process.cwd();
-  // Middleware passes a baked `site`. Still consult the workspace so a
-  // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
-  // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
-  // a correct bake is unchanged.
-  const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
-    cwd,
-  );
+  // Vite passes `cwd` and Nitro passes a baked `site`. A call that names
+  // neither must not inherit process.cwd()'s site.json: that file is this
+  // game's identity, and a document title or host slug would never win.
+  // When a workspace is named, still consult it so a public/og.jpg generated
+  // after a bake wins. Vercel has no public/ to read, so a correct bake is unchanged.
+  let site;
+  if (ctx.cwd !== undefined) {
+    site = applyCustomCardFromFs(
+      ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
+      cwd,
+    );
+  } else if (ctx.site !== undefined) {
+    site = applyCustomCardFromFs(ctx.site, cwd);
+  } else {
+    site = {};
+  }
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,

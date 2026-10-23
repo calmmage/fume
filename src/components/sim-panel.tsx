@@ -15,7 +15,8 @@ import {
   type SimParams,
 } from "@/game/params";
 import { SCENES } from "@/game/scenes";
-import type { LookState } from "@/game/look";
+import { ROOM_STYLES, type LookState } from "@/game/look";
+import { StylePicker } from "./style-picker";
 import { cn } from "@/lib/utils";
 
 const FEEL: { key: keyof SimParams; label: string }[] = [
@@ -33,6 +34,7 @@ export function SimPanel({
   sceneId,
   onScene,
   onKeep,
+  onResetView,
 }: {
   params: SimParams;
   onChange: (next: SimParams) => void;
@@ -41,6 +43,7 @@ export function SimPanel({
   sceneId: string;
   onScene: (id: string) => void;
   onKeep: () => void;
+  onResetView: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fine, setFine] = useState(false);
@@ -67,6 +70,7 @@ export function SimPanel({
 
   return (
     <>
+      <StylePicker look={look} onLook={onLook} />
       <button
         type="button"
         aria-label="Open simulation lab"
@@ -75,7 +79,7 @@ export function SimPanel({
         tabIndex={open ? -1 : 0}
         onClick={() => setOpen(true)}
         className={cn(
-          "absolute top-1/2 left-[max(1rem,env(safe-area-inset-left))] z-30 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/75 text-fg backdrop-blur-sm transition-opacity duration-200 ease-out hover:opacity-90 active:scale-[0.96]",
+          "absolute top-1/2 left-[max(1rem,env(safe-area-inset-left))] z-30 flex size-11 -translate-y-1/2 items-center justify-center rounded-[6px] border border-border bg-surface/75 text-fg backdrop-blur-sm transition-opacity duration-200 ease-out hover:opacity-90 active:scale-[0.96]",
           open ? "pointer-events-none opacity-0" : "opacity-100",
         )}
       >
@@ -165,7 +169,7 @@ export function SimPanel({
 
               <section className="mt-6">
                 <p className="mb-2 font-sans text-xs tracking-[0.18em] text-subtle uppercase">Room</p>
-                <p className="mb-1.5 font-sans text-xs text-muted">Mood</p>
+                {look.roomStyle !== "empty" ? <><p className="mb-1.5 font-sans text-xs text-muted">Mood</p>
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   {(
                     [
@@ -186,28 +190,35 @@ export function SimPanel({
                     </Chip>
                   ))}
                 </div>
+                </> : null}
                 <div className="mb-3 flex flex-wrap gap-1.5">
-                  <Chip
+                  {look.roomStyle !== "empty" ? <Chip
                     pressed={look.room}
-                    label="Stone corridor. Off returns the flat room, so the woods layers can show."
+                    label="Show the selected background. Turn off to reveal the flat or forest background."
                     onClick={() => onLook({ ...look, room: !look.room })}
                   >
                     Room
-                  </Chip>
-                  <Chip pressed={look.grain} onClick={() => onLook({ ...look, grain: !look.grain })}>
+                  </Chip> : null}
+                  {look.roomStyle !== "empty" ? <Chip pressed={look.grain} onClick={() => onLook({ ...look, grain: !look.grain })}>
                     Grain
-                  </Chip>
+                  </Chip> : null}
+                  {look.roomStyle !== "empty" && (!look.room || look.roomStyle !== "cosmos") && (
+                    <Chip pressed={look.dust} onClick={() => onLook({ ...look, dust: !look.dust })}>
+                      Spatial points
+                    </Chip>
+                  )}
                 </div>
-                {look.room ? (
+                {look.room ? <>
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {ROOM_STYLES.map(({ id, label }) => (
+                      <Chip key={id} pressed={look.roomStyle === id} onClick={() => onLook({ ...look, roomStyle: id })}>{label}</Chip>
+                    ))}
+                    <button type="button" onClick={onResetView} className="min-h-11 rounded-[6px] px-3 font-sans text-xs text-fg underline underline-offset-4">Reset view</button>
+                  </div>
+                  <p className="mb-4 font-sans text-xs leading-relaxed text-muted">{look.roomStyle === "empty" ? "Empty shows smoke and tools on black. Choose a room to add an atmosphere." : "Small points stay fixed in the room as you move. These controls change the atmosphere, not the smoke."}</p>
+                </> : null}
+                {look.roomStyle === "empty" ? null : look.room ? (
                   <div className="mb-3 flex flex-col gap-2.5">
-                    <Range
-                      label="Layers"
-                      min={6}
-                      max={28}
-                      step={1}
-                      value={look.slices}
-                      onChange={(n) => onLook({ ...look, slices: n })}
-                    />
                     <Range
                       label="Depth"
                       min={1.6}
@@ -215,14 +226,6 @@ export function SimPanel({
                       step={0.1}
                       value={look.roomDepth}
                       onChange={(n) => onLook({ ...look, roomDepth: n })}
-                    />
-                    <Range
-                      label="Scene"
-                      min={0.12}
-                      max={0.88}
-                      step={0.01}
-                      value={look.sceneZ}
-                      onChange={(n) => onLook({ ...look, sceneZ: n })}
                     />
                     <Range
                       label="X"
@@ -240,22 +243,24 @@ export function SimPanel({
                       value={look.roomY}
                       onChange={(n) => onLook({ ...look, roomY: n })}
                     />
-                    <Range
-                      label="Width"
-                      min={0.35}
-                      max={1.6}
-                      step={0.01}
-                      value={look.roomW}
-                      onChange={(n) => onLook({ ...look, roomW: n })}
-                    />
-                    <Range
-                      label="Height"
-                      min={0.25}
-                      max={1.2}
-                      step={0.01}
-                      value={look.roomH}
-                      onChange={(n) => onLook({ ...look, roomH: n })}
-                    />
+                    {look.roomStyle === "geometry" ? <>
+                      <Range
+                        label="Width"
+                        min={0.35}
+                        max={1.6}
+                        step={0.01}
+                        value={look.roomW}
+                        onChange={(n) => onLook({ ...look, roomW: n })}
+                      />
+                      <Range
+                        label="Height"
+                        min={0.25}
+                        max={1.2}
+                        step={0.01}
+                        value={look.roomH}
+                        onChange={(n) => onLook({ ...look, roomH: n })}
+                      />
+                    </> : null}
                   </div>
                 ) : (
                   <>
@@ -281,12 +286,13 @@ export function SimPanel({
                     </div>
                   </>
                 )}
+                {look.roomStyle !== "empty" && (!look.room || (look.roomStyle !== "geometry" && look.roomStyle !== "cosmos")) ? <>
                 <p className="mb-1.5 font-sans text-xs text-muted">Light</p>
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   {(
                     [
                       ["off", "Off"],
-                      ["shafts", "Shafts"],
+                      ["shafts", "Window"],
                       ["sun", "Sun"],
                     ] as const
                   ).map(([id, label]) => (
@@ -295,6 +301,7 @@ export function SimPanel({
                     </Chip>
                   ))}
                 </div>
+                </> : null}
               </section>
 
               <section className="mt-6">
@@ -370,7 +377,7 @@ function Range({
         value={value}
         aria-label={label}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1 flex-1 accent-fg"
+        className="h-11 min-w-0 flex-1 accent-fg"
       />
       <span className="w-8 tabular-nums text-subtle">{shown}</span>
     </label>
@@ -395,7 +402,7 @@ function Chip({
       title={label}
       onClick={onClick}
       className={cn(
-        "min-h-11 rounded-full border px-3 font-sans text-xs",
+        "min-h-11 rounded-[6px] border px-3 font-sans text-xs",
         pressed ? "border-fg/30 bg-fg text-bg" : "border-border text-muted hover:text-fg",
       )}
     >
@@ -422,7 +429,7 @@ function IconBtn({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-opacity duration-150 hover:text-fg disabled:opacity-40"
+      className="flex size-11 shrink-0 items-center justify-center rounded-[6px] text-muted transition-opacity duration-150 hover:text-fg disabled:opacity-40"
     >
       {children}
     </button>
@@ -473,7 +480,7 @@ function ParamRow({
             title={`Randomize ${field.label}`}
             disabled={disabled}
             onClick={onRandomize}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-subtle transition-opacity duration-150 hover:text-fg disabled:opacity-40"
+            className="flex size-11 shrink-0 items-center justify-center rounded-[6px] text-subtle transition-opacity duration-150 hover:text-fg disabled:opacity-40"
           >
             <Dices className="size-3.5" />
           </button>
@@ -491,7 +498,7 @@ function ParamRow({
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
-            className="h-8 w-16 rounded-sm border border-border bg-bg/50 px-2 text-right font-mono text-xs tabular-nums text-fg outline-none transition-shadow duration-150 focus-visible:ring-2 focus-visible:ring-fg/30"
+            className="h-11 w-16 rounded-[6px] border border-border bg-bg/50 px-2 text-right font-mono text-xs tabular-nums text-fg outline-none transition-shadow duration-150 focus-visible:ring-2 focus-visible:ring-fg/30"
           />
         </div>
       </div>

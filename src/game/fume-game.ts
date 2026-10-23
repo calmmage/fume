@@ -18,7 +18,7 @@ import {
   rotateGadget,
   scaleGadget,
   stretchGadget,
-  setPlaceMode,
+  setHeldToolActive,
   setTool,
   setWorldParams,
   setWorldLook,
@@ -32,7 +32,30 @@ import {
 } from "./sim";
 import { clampParams, type SimParams } from "./params";
 import type { LookState } from "./look";
-import type { ToolKind } from "./tools";
+import type { Gadget, ToolKind } from "./tools";
+import {
+  createChallengeSetup,
+  getChallenge,
+  remainingKit,
+  emptyChallengeProgress,
+  advanceChallengeProgress,
+  TARGET_HOLD_SECONDS,
+  VISIBLE_OPACITY,
+  type ChallengeId,
+  type ChallengeHud,
+  type ChallengeSetup,
+  type ChallengeProgress,
+} from "./challenges";
+import { sessionPoint, sessionPointer, sessionViewport } from "./session-view";
+import type { ProbeSession } from "./smoke-probe";
+
+interface ChallengeSession {
+  setup: ChallengeSetup;
+  progress: ChallengeProgress;
+  selectedId: number | null;
+  probeReady: boolean;
+  error: string | null;
+}
 
 export interface HudSnapshot {
   score: number;
@@ -46,9 +69,11 @@ export interface HudSnapshot {
   width: number;
   height: number;
   glError: string | null;
+  sessionNotice: string | null;
   tool: ToolKind;
-  placeMode: boolean;
+  heldToolActive: boolean;
   gadgetCount: number;
+  challenge: ChallengeHud | null;
 }
 
 export type HudListener = (s: HudSnapshot) => void;
@@ -75,7 +100,11 @@ export class FumeGame {
   private onHud: HudListener;
   private lastHud = 0;
   glError: string | null = null;
+  private sessionNotice: string | null = null;
   private disposed = false;
+  private parked: { world: World; acc: number } | null = null;
+  private challenge: ChallengeSession | null = null;
+  private logicalSizeLocked = false;
 
   constructor(canvas: HTMLCanvasElement, onHud: HudListener) {
     this.canvas = canvas;
@@ -115,14 +144,27 @@ export class FumeGame {
   }
 
   setParams(params: SimParams) {
+    if (this.challenge) return;
     setWorldParams(this.world, clampParams(params));
   }
 
   setLook(look: LookState) {
     setWorldLook(this.world, look);
+    if (this.challenge && this.world.dragMode === "move")
+      this.moveInputPointer(this.world.pointerX, this.world.pointerY);
+  }
+
+  resetView() {
+    this.world.look.parallaxX = 0;
+    this.world.look.parallaxY = 0;
+    this.world.look.panVx = 0;
+    this.world.look.panVy = 0;
+    if (this.challenge && this.world.dragMode === "move")
+      this.moveInputPointer(this.world.pointerX, this.world.pointerY);
   }
 
   loadScene(id: string) {
+    if (this.challenge) return;
     applyScene(this.world, id);
     this.emitHud();
   }
@@ -132,6 +174,7 @@ export class FumeGame {
   }
 
   holdBlow(on: boolean) {
+    if (this.challenge) return;
     this.uiBlow = on;
     this.applyBlow();
   }
@@ -142,7 +185,14 @@ export class FumeGame {
   }
 
   setTool(tool: ToolKind) {
+    if (
+      this.challenge &&
+      tool !== "hand" &&
+      ((tool !== "fan" && tool !== "block") || !this.availableChallengeTool(tool))
+    )
+      return;
     setTool(this.world, tool);
+    if (this.challenge) setHeldToolActive(this.world, false);
     this.panning = false;
     this.world.look.dragging = false;
     if (tool !== "wand") {
@@ -154,14 +204,235 @@ export class FumeGame {
     this.emitHud();
   }
 
-  setPlaceMode(place: boolean) {
-    setPlaceMode(this.world, place);
+  setHeldToolActive(active: boolean) {
+    if (this.challenge) return;
+    setHeldToolActive(this.world, active);
     this.emitHud();
   }
 
   clearPlaced() {
+    if (this.challenge) return;
     clearGadgets(this.world);
     this.emitHud();
+  }
+
+  enterChallenge(id: ChallengeId, keptParams: SimParams): boolean {
+    if (!this.renderer || this.disposed || this.glError) return false;
+    let setup: ChallengeSetup;
+    try {
+      getChallenge(id);
+      setup = createChallengeSetup(
+        id,
+        this.world.w,
+        this.world.h,
+        keptParams,
+        this.world.look,
+        this.world.reducedMotion,
+      );
+    } catch {
+      return false;
+    }
+    const attempt: ChallengeSession = {
+      setup,
+      progress: emptyChallengeProgress(),
+      selectedId: null,
+      probeReady: false,
+      error: null,
+    };
+    const probe = this.challengeProbe(attempt);
+    let allocationError: string | null = null;
+    const onAllocationFailure = (message: string) => {
+      allocationError = message;
+      if (this.disposed || this.challenge !== attempt) return;
+      this.leaveChallenge();
+      this.showAllocationNotice(message);
+    };
+    const replacing = this.challenge !== null;
+    const entered = replacing
+      ? this.renderer.replaceSession(setup.world, probe, onAllocationFailure)
+      : this.renderer.enterSession(setup.world, probe, onAllocationFailure);
+    if (!entered) {
+      if (replacing) this.leaveChallenge();
+      this.showAllocationNotice(allocationError);
+      return false;
+    }
+    this.onBlur();
+    if (!this.parked) this.parked = { world: this.world, acc: this.acc };
+    this.world = setup.world;
+    this.challenge = attempt;
+    this.sessionNotice = null;
+    this.logicalSizeLocked = true;
+    this.acc = 0;
+    this.last = performance.now();
+    this.syncCursor();
+    this.emitHud();
+    return true;
+  }
+
+  retryChallenge(): boolean {
+    if (!this.challenge) return false;
+    return this.enterChallenge(
+      this.challenge.setup.definition.id,
+      this.challenge.setup.world.params,
+    );
+  }
+
+  dismissSessionNotice(): void {
+    this.sessionNotice = null;
+    this.emitHud();
+  }
+
+  getSessionNotice(): string | null {
+    return this.sessionNotice;
+  }
+
+  private showAllocationNotice(message: string | null) {
+    const reason =
+      message && /memory/i.test(message) ? " There was not enough graphics memory." : "";
+    this.sessionNotice = `The challenge could not open.${reason} Your playground is still here, including its smoke. Try again or continue playing.`;
+    this.emitHud();
+  }
+
+  leaveChallenge(): void {
+    if (!this.parked) return;
+    this.onBlur();
+    this.renderer?.restoreSession();
+    this.world = this.parked.world;
+    this.acc = this.parked.acc;
+    this.parked = null;
+    this.challenge = null;
+    this.last = performance.now();
+    this.syncCursor();
+    this.emitHud();
+  }
+
+  selectChallengeTool(kind: "fan" | "block" | null): void {
+    if (!this.challenge) return;
+    if (kind && !this.availableChallengeTool(kind)) return;
+    this.challenge.selectedId = null;
+    this.setTool(kind ?? "hand");
+  }
+
+  selectChallengeGadget(id: number | null): void {
+    if (!this.challenge) return;
+    const gadget = this.world.gadgets.find((g) => !g.bound && g.id === id);
+    this.challenge.selectedId = gadget?.id ?? null;
+    this.setTool("hand");
+  }
+
+  setChallengeAngle(degrees: number): void {
+    const gadget = this.selectedChallengeGadget();
+    if (!gadget || !this.canEditGadget(gadget) || !Number.isFinite(degrees)) return;
+    rotateGadget(this.world, gadget, (degrees * Math.PI) / 180 - gadget.angle);
+    this.emitHud();
+  }
+
+  removeChallengeGadget(): void {
+    const gadget = this.selectedChallengeGadget();
+    if (!gadget || !this.canEditGadget(gadget)) return;
+    removeGadget(this.world, gadget);
+    if (this.challenge) this.challenge.selectedId = null;
+    this.emitHud();
+  }
+
+  private availableChallengeTool(kind: "fan" | "block") {
+    return (
+      this.challenge &&
+      remainingKit(this.world, this.challenge.setup).some(
+        (item) => item.kind === kind && item.remaining > 0,
+      )
+    );
+  }
+
+  private selectedChallengeGadget() {
+    return this.world.gadgets.find((g) => !g.bound && g.id === this.challenge?.selectedId);
+  }
+
+  private canEditGadget(gadget: Gadget) {
+    return !this.challenge || !this.challenge.setup.fixedIds.has(gadget.id);
+  }
+
+  private placeAt(x: number, y: number) {
+    const kind = this.world.tool;
+    if (
+      this.challenge &&
+      ((kind !== "fan" && kind !== "block") || !this.availableChallengeTool(kind))
+    )
+      return null;
+    const gadget = placeGadgetAt(this.world, x, y);
+    if (gadget && this.challenge) this.challenge.selectedId = gadget.id;
+    return gadget;
+  }
+
+  private finishChallengePlacement() {
+    const kind = this.world.tool;
+    if (
+      this.challenge &&
+      (kind === "fan" || kind === "block") &&
+      !this.availableChallengeTool(kind)
+    )
+      this.setTool("hand");
+  }
+
+  private challengeProbe(attempt: ChallengeSession): ProbeSession {
+    return {
+      target: { ...attempt.setup.target, visibleOpacity: VISIBLE_OPACITY },
+      onSample: (sample) => {
+        if (this.disposed || this.challenge !== attempt || attempt.error || this.glError) return;
+        attempt.probeReady = true;
+        attempt.progress = advanceChallengeProgress(attempt.progress, sample);
+        this.emitHud();
+      },
+      onError: (message) => {
+        if (this.disposed || this.challenge !== attempt) return;
+        attempt.error = `Smoke measurement unavailable: ${message}`;
+        this.emitHud();
+      },
+    };
+  }
+
+  private challengeHud(): ChallengeHud | null {
+    const challenge = this.challenge;
+    if (!challenge) return null;
+    const { setup, progress } = challenge;
+    const viewport = this.viewport();
+    const selected = this.selectedChallengeGadget();
+    const angle = (g: Gadget) => ((((g.angle * 180) / Math.PI) % 360) + 360) % 360;
+    const error = challenge.error ?? this.glError;
+    return {
+      id: setup.definition.id,
+      title: setup.definition.title,
+      description: setup.definition.description,
+      hint: setup.definition.hint,
+      status: error ? "error" : progress.complete ? "complete" : "running",
+      fill: progress.fill,
+      coverage: progress.coverage,
+      hold: progress.heldSeconds / TARGET_HOLD_SECONDS,
+      probeReady: challenge.probeReady,
+      error,
+      kit: remainingKit(this.world, setup),
+      placement: this.world.tool === "fan" || this.world.tool === "block" ? this.world.tool : null,
+      selected: selected
+        ? {
+            id: selected.id,
+            kind: selected.kind,
+            angle: angle(selected),
+            fixed: setup.fixedIds.has(selected.id),
+          }
+        : null,
+      tools: this.world.gadgets
+        .filter((g) => !g.bound)
+        .map((g) => ({
+          id: g.id,
+          kind: g.kind,
+          angle: angle(g),
+          fixed: setup.fixedIds.has(g.id),
+          selected: selected?.id === g.id,
+          ...sessionPoint(this.world, viewport, g),
+        })),
+      screenTarget: sessionPoint(this.world, viewport, setup.target),
+      viewport,
+    };
   }
 
   destroy() {
@@ -244,45 +515,63 @@ export class FumeGame {
 
   private resize = () => {
     const { w, h } = this.cssSize();
-    resizeWorld(this.world, w, h);
+    if (!this.logicalSizeLocked) resizeWorld(this.world, w, h);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.renderer?.resize(w, h, dpr);
+    this.emitHud();
   };
+
+  private viewport() {
+    const { w, h } = this.cssSize();
+    return sessionViewport(w, h, this.world.w, this.world.h);
+  }
 
   private toLocal(e: { clientX: number; clientY: number }) {
     const rect = this.canvas.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * this.world.w,
-      y: ((e.clientY - rect.top) / rect.height) * this.world.h,
-    };
+    return sessionPointer(
+      this.viewport(),
+      this.world.w,
+      this.world.h,
+      e.clientX - rect.left,
+      e.clientY - rect.top,
+    );
   }
 
   private onPointerDown = (e: PointerEvent) => {
     this.audio.unlock();
     const s = this.toLocal(e);
-    movePointer(this.world, s.x, s.y);
+    if (!s.inside) return;
+    this.moveInputPointer(s.x, s.y);
     const p = screenToWorld(this.world, s.x, s.y);
     const right = e.button === 2 || e.ctrlKey || e.metaKey;
     const gadget = pickGadget(this.world, p.x, p.y);
-    if (gadget && (right || this.world.tool !== "hand")) {
-      if (right) {
+    if (right) {
+      if (gadget && this.canEditGadget(gadget)) {
         removeGadget(this.world, gadget);
+        if (this.challenge?.selectedId === gadget.id) this.challenge.selectedId = null;
         this.emitHud();
-        return;
-      }
-      this.world.dragId = gadget.id;
-      beginGadgetDrag(this.world, gadget, p.x, p.y, "move");
-      try {
-        this.canvas.setPointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
       }
       return;
     }
-    if (right) return;
     if (this.world.tool === "hand") {
+      if (gadget) {
+        if (this.challenge) {
+          this.challenge.selectedId = gadget.id;
+          this.emitHud();
+        }
+      }
+      if (gadget && this.canEditGadget(gadget)) {
+        beginGadgetDrag(this.world, gadget, p.x, p.y, "move");
+        if (this.challenge) this.world.look.dragging = true;
+        try {
+          this.canvas.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
       this.panning = true;
-      this.handTap = true;
+      this.handTap = !this.challenge;
       this.tapX = s.x;
       this.tapY = s.y;
       this.panX = s.x;
@@ -297,10 +586,11 @@ export class FumeGame {
       }
       return;
     }
-    if (this.world.placeMode && this.world.tool !== "wand") {
-      const g = placeGadgetAt(this.world, p.x, p.y);
+    if (this.world.tool !== "wand") {
+      const g = this.placeAt(p.x, p.y);
       if (g) {
-        const mode = g.kind === "block" ? "draw" : g.kind === "fan" || g.kind === "smoke" ? "aim" : "move";
+        const mode =
+          g.kind === "block" ? "draw" : g.kind === "fan" || g.kind === "smoke" ? "aim" : "move";
         beginGadgetDrag(this.world, g, p.x, p.y, mode);
         try {
           this.canvas.setPointerCapture(e.pointerId);
@@ -331,6 +621,7 @@ export class FumeGame {
 
   private onPointerMove = (e: PointerEvent) => {
     const s = this.toLocal(e);
+    if (!s.inside && !this.panning && this.world.dragId == null && this.blowPointer == null) return;
     if (this.panning) {
       if (Math.hypot(s.x - this.tapX, s.y - this.tapY) > 7) this.handTap = false;
       const dt = Math.max(0.008, (e.timeStamp - this.panStamp) / 1000);
@@ -339,8 +630,24 @@ export class FumeGame {
       this.panX = s.x;
       this.panY = s.y;
     }
-    movePointer(this.world, s.x, s.y);
+    this.moveInputPointer(s.x, s.y);
   };
+
+  private moveInputPointer(x: number, y: number) {
+    const drag =
+      this.challenge && this.world.dragMode === "move"
+        ? this.world.gadgets.find((gadget) => gadget.id === this.world.dragId)
+        : undefined;
+    const angle = drag?.angle;
+    movePointer(this.world, x, y);
+    if (drag && angle !== undefined) {
+      // Challenge movement and aiming are separate controls. Rebase the move
+      // anchor too: stepWorld reapplies applyDrag between pointer events.
+      drag.angle = angle;
+      this.world.dragX = drag.x;
+      this.world.dragY = drag.y;
+    }
+  }
 
   private onPointerUp = (e: PointerEvent) => {
     if (this.panning) {
@@ -365,47 +672,84 @@ export class FumeGame {
       this.blowPointer = null;
       this.applyBlow();
     }
-    if (this.world.dragId != null) endGadgetDrag(this.world);
+    if (this.world.dragId != null) {
+      if (this.challenge && this.world.dragMode === "move") this.world.look.dragging = false;
+      endGadgetDrag(this.world);
+    }
+    this.finishChallengePlacement();
+    if (this.challenge) this.emitHud();
+  };
+
+  private onPointerCancel = (e: PointerEvent) => {
+    this.handTap = false;
+    this.onPointerUp(e);
   };
 
   private onWheel = (e: WheelEvent) => {
+    // Browsers send Ctrl-wheel for trackpad pinch; leave native zoom alone.
+    if (e.ctrlKey || e.metaKey) return;
     e.preventDefault();
+    const unit = e.deltaMode === 1 ? 16 : 1;
+    const dx = e.deltaX * (e.deltaMode === 2 ? this.world.w : unit);
+    const dy = e.deltaY * (e.deltaMode === 2 ? this.world.h : unit);
+    if (!e.altKey && !e.shiftKey) {
+      const viewport = this.viewport();
+      const scale = e.deltaMode === 2 ? 1 : this.world.w / viewport.width;
+      panRoom(this.world, -dx * scale, -dy * scale, 1 / 60);
+      // Trackpads supply their own momentum through wheel events. Adding room
+      // inertia again would make the room drift after the gesture has stopped.
+      this.world.look.panVx = 0;
+      this.world.look.panVy = 0;
+      // Keep the held preview under the pointer without interpreting camera
+      // movement as an aiming gesture on the next simulation step.
+      if (this.world.dragId == null || (this.challenge && this.world.dragMode === "move"))
+        this.moveInputPointer(this.world.pointerX, this.world.pointerY);
+      return;
+    }
+    const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+    if (delta === 0) return;
     const s = this.toLocal(e);
+    if (!s.inside) return;
     const p = screenToWorld(this.world, s.x, s.y);
     const bound = this.world.gadgets.find((g) => g.bound);
     const hit = pickGadget(this.world, p.x, p.y) ?? bound;
-    if (!hit) return;
+    if (!hit || !this.canEditGadget(hit)) return;
     if (hit.kind === "block") {
-      if ((e.altKey || e.ctrlKey) && Math.abs(e.deltaY) > 18) {
-        tuneBlock(this.world, hit, e.deltaY, true);
-      } else if (e.shiftKey && hit.shape < 0.5 && this.world.dragMode !== "draw") {
-        const factor = Math.exp(-e.deltaY * 0.0016);
+      if (e.altKey && e.shiftKey) {
+        if (Math.abs(delta) > 18) tuneBlock(this.world, hit, delta, true);
+      } else if (e.altKey && hit.shape < 0.5 && this.world.dragMode !== "draw") {
+        const factor = Math.exp(-delta * 0.0016);
         hit.w = Math.min(540, Math.max(22, hit.w * factor));
-      } else if (!e.altKey && !e.ctrlKey) {
-        tuneBlock(this.world, hit, e.deltaY, false);
+      } else {
+        tuneBlock(this.world, hit, delta, false);
       }
       return;
     }
-    if (hit.kind === "vortex" && !e.shiftKey) {
-      if (Math.abs(e.deltaY) < 18) return;
-      hit.power = e.deltaY > 0 ? -Math.abs(hit.power) : Math.abs(hit.power);
+    if (hit.kind === "vortex" && e.altKey && !e.shiftKey) {
+      if (Math.abs(delta) < 18) return;
+      hit.power = delta > 0 ? -Math.abs(hit.power) : Math.abs(hit.power);
       return;
     }
-    const factor = Math.exp(-e.deltaY * 0.0016);
-    if (e.shiftKey || hit.kind === "candle" || hit.kind === "vent") scaleGadget(this.world, hit, factor);
-    else if (e.altKey || e.ctrlKey) stretchGadget(this.world, hit, factor);
-    else rotateGadget(this.world, hit, e.deltaY * 0.004);
+    const factor = Math.exp(-delta * 0.0016);
+    if (e.altKey && e.shiftKey) stretchGadget(this.world, hit, factor);
+    else if (e.shiftKey || hit.kind === "candle" || hit.kind === "vent")
+      scaleGadget(this.world, hit, factor);
+    else rotateGadget(this.world, hit, delta * 0.004);
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (e.code === "Space") {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      e.preventDefault();
-      this.audio.unlock();
-      this.keys.add(e.code);
-      this.applyBlow();
-    }
+    if (e.code !== "Space" || e.defaultPrevented || this.world.tool !== "wand") return;
+    // A focused control owns its keyboard input; the shortcut belongs to the room.
+    if (
+      e.target !== this.canvas &&
+      e.target !== document.body &&
+      e.target !== document.documentElement
+    )
+      return;
+    e.preventDefault();
+    this.audio.unlock();
+    this.keys.add(e.code);
+    this.applyBlow();
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
@@ -418,6 +762,8 @@ export class FumeGame {
     this.blowPointer = null;
     this.uiBlow = false;
     this.panning = false;
+    this.handTap = false;
+    endGadgetDrag(this.world);
     this.world.look.dragging = false;
     this.world.look.panVx = 0;
     this.world.look.panVy = 0;
@@ -451,7 +797,7 @@ export class FumeGame {
     this.canvas.addEventListener("pointerdown", this.onPointerDown);
     this.canvas.addEventListener("pointermove", this.onPointerMove);
     this.canvas.addEventListener("pointerup", this.onPointerUp);
-    this.canvas.addEventListener("pointercancel", this.onPointerUp);
+    this.canvas.addEventListener("pointercancel", this.onPointerCancel);
     this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
     this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     this.resize();
@@ -466,7 +812,7 @@ export class FumeGame {
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
     this.canvas.removeEventListener("pointermove", this.onPointerMove);
     this.canvas.removeEventListener("pointerup", this.onPointerUp);
-    this.canvas.removeEventListener("pointercancel", this.onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this.onPointerCancel);
     this.canvas.removeEventListener("wheel", this.onWheel);
   }
 
@@ -488,9 +834,11 @@ export class FumeGame {
       width: this.world.w,
       height: this.world.h,
       glError: this.glError,
+      sessionNotice: this.sessionNotice,
       tool: this.world.tool,
-      placeMode: this.world.placeMode,
+      heldToolActive: this.world.heldToolActive,
       gadgetCount: this.world.gadgets.filter((g) => !g.bound).length,
+      challenge: this.challengeHud(),
     });
   }
 
@@ -502,8 +850,10 @@ export class FumeGame {
         playing: this.world.playing,
         blowing: this.world.blowing,
         pops: this.world.pops,
+        challenge: this.challengeHud(),
       }),
       popNearest: () => {
+        if (this.challenge) return false;
         const b = this.world.bubbles.find((x) => x.alive && !x.popping);
         if (!b) return false;
         popBubble(this.world, b, b.x, b.y, true);
@@ -517,12 +867,20 @@ export class FumeGame {
         this.setParams({ ...this.world.params, ...p });
       },
       setTool: (t: string) => this.setTool(t as ToolKind),
-      setPlaceMode: (on: boolean) => this.setPlaceMode(on),
-      placeAt: (x: number, y: number) => placeGadgetAt(this.world, x, y),
+      setHeldToolActive: (on: boolean) => this.setHeldToolActive(on),
+      // Older local scripts used Pin to silence the held device. Placement is
+      // now unconditional; keep only that effect of the old debug command.
+      setPlaceMode: (on: boolean) => this.setHeldToolActive(!on),
+      placeAt: (x: number, y: number) => {
+        const gadget = this.placeAt(x, y);
+        this.finishChallengePlacement();
+        this.emitHud();
+        return gadget;
+      },
       clearGadgets: () => this.clearPlaced(),
       getTools: () => ({
         tool: this.world.tool,
-        placeMode: this.world.placeMode,
+        heldToolActive: this.world.heldToolActive,
         gadgets: this.world.gadgets.filter((g) => !g.bound).map((g) => g.kind),
       }),
       getLook: () => ({ ...this.world.look }),
@@ -553,6 +911,7 @@ declare global {
         playing: boolean;
         blowing: boolean;
         pops: number;
+        challenge: ChallengeHud | null;
       };
       popNearest: () => boolean;
       beginBlow: () => void;
@@ -560,10 +919,11 @@ declare global {
       getParams: () => SimParams;
       setParams: (p: Partial<SimParams>) => void;
       setTool: (t: string) => void;
+      setHeldToolActive: (on: boolean) => void;
       setPlaceMode: (on: boolean) => void;
       placeAt: (x: number, y: number) => unknown;
       clearGadgets: () => void;
-      getTools: () => { tool: string; placeMode: boolean; gadgets: string[] };
+      getTools: () => { tool: string; heldToolActive: boolean; gadgets: string[] };
       getLook: () => { parallaxX: number; parallaxY: number };
     };
   }

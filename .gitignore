@@ -3,7 +3,11 @@ dist
 .vercel
 .env
 .env.*
-.grok
+.grok/**
+!.grok/app-env.json
+!.grok/skills/
+!.grok/skills/og/
+!.grok/skills/og/**
 artifacts
 screenshots
 attachments

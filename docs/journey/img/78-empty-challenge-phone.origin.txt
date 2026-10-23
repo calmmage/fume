@@ -1,0 +1,1 @@
+Actual normal-UI CUA browser screenshot, local FUME source f8c9a14 on 13 October 2026. Source /private/tmp/fume-challenge-shots/78-empty-challenge-phone.png. 390x844 Draft actual smoke completion in Empty; selected fan angle -37 degrees, progress100 and Next enabled; no state injection.

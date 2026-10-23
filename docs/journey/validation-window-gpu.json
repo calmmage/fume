@@ -1,0 +1,108 @@
+{
+  "checkedAt": "2026-10-14T17:32:17.509Z",
+  "results": [
+    {
+      "case": "continuous geometry dust",
+      "pan": [
+        0,
+        0
+      ],
+      "visiblePixels": 821,
+      "pass": true
+    },
+    {
+      "case": "continuous geometry dust",
+      "pan": [
+        20,
+        0
+      ],
+      "visiblePixels": 755,
+      "pass": true
+    },
+    {
+      "case": "continuous geometry dust",
+      "pan": [
+        -20,
+        0
+      ],
+      "visiblePixels": 803,
+      "pass": true
+    },
+    {
+      "case": "continuous geometry dust",
+      "pan": [
+        20,
+        0.65
+      ],
+      "visiblePixels": 844,
+      "pass": true
+    },
+    {
+      "case": "continuous geometry dust",
+      "pan": [
+        -20,
+        -0.65
+      ],
+      "visiblePixels": 798,
+      "pass": true
+    },
+    {
+      "case": "same-depth dust follows architectural camera displacement",
+      "expectedShift": 39.80909951146196,
+      "trackedPixels": 16,
+      "matchedPixels": 16,
+      "pass": true
+    },
+    {
+      "case": "full-size architectural window",
+      "style": "wood",
+      "heightFraction": 0.7525,
+      "widthFraction": 0.18125,
+      "pass": true
+    },
+    {
+      "case": "dust and room stop together at camera limits",
+      "style": "wood",
+      "pass": true
+    },
+    {
+      "case": "full-size architectural window",
+      "style": "stone",
+      "heightFraction": 0.7525,
+      "widthFraction": 0.18125,
+      "pass": true
+    },
+    {
+      "case": "dust and room stop together at camera limits",
+      "style": "stone",
+      "pass": true
+    },
+    {
+      "case": "full-size architectural window",
+      "style": "pixel",
+      "heightFraction": 0.7525,
+      "widthFraction": 0.18125,
+      "pass": true
+    },
+    {
+      "case": "dust and room stop together at camera limits",
+      "style": "pixel",
+      "pass": true
+    },
+    {
+      "case": "smoke-only empty background",
+      "visiblePixels": 0,
+      "pass": true
+    },
+    {
+      "case": "Empty still displays actual fluid density",
+      "visiblePixels": 256000,
+      "pass": true
+    },
+    {
+      "case": "native GPU validation",
+      "errors": [],
+      "pass": true
+    }
+  ]
+}

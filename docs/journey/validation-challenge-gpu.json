@@ -1,0 +1,570 @@
+{
+  "measuredAt": "2026-10-13T17:50:41.748Z",
+  "adapter": {
+    "name": "Metal driver on macOS Version 27.0 (Build 26A428)",
+    "type": "gpu"
+  },
+  "measurements": [
+    {
+      "name": "empty",
+      "fill": 0,
+      "coverage": 0
+    },
+    {
+      "name": "invisible-density",
+      "fill": 0,
+      "coverage": 0
+    },
+    {
+      "name": "visible-density",
+      "fill": 0.3205474019050598,
+      "coverage": 1
+    },
+    {
+      "name": "dense",
+      "fill": 1,
+      "coverage": 1
+    },
+    {
+      "name": "spatial-max-channel",
+      "fill": 0.5904181003570557,
+      "coverage": 0.6442307829856873
+    },
+    {
+      "name": "square-corners-outside-circle",
+      "fill": 0,
+      "coverage": 0
+    }
+  ],
+  "overhead": {
+    "scope": "Headless probe only; no concurrent solver/render submissions on this GPU queue. Not whole-app FPS or a GPU timestamp measurement. Other applications were not controlled.",
+    "hostEncodeDefinition": "Synchronous SmokeProbe.sample() call: uniforms, compute submission, staging-copy submission and validation-scope setup, including diagnostic counters.",
+    "endToEndDefinition": "Same call start through onSample after 16-byte asynchronous readback and validation; includes host scheduling and GPU queue/readback latency.",
+    "percentileDefinition": "Nearest rank, warmup excluded",
+    "dyeSize": [
+      1024,
+      640
+    ],
+    "dyeBytes": 10485760,
+    "warmupSamples": 10,
+    "measuredSamples": 100,
+    "minimumCadenceMs": 105,
+    "bytesPerSample": 16,
+    "hostEncode": {
+      "p50Ms": 0.22366599999986647,
+      "p95Ms": 0.451666999999361,
+      "minMs": 0.19970899999862013,
+      "maxMs": 1.418666999999914
+    },
+    "endToEnd": {
+      "p50Ms": 0.7232920000005834,
+      "p95Ms": 0.9958749999996144,
+      "minMs": 0.33266699999876437,
+      "maxMs": 1.6474999999995816
+    },
+    "enabled": {
+      "dispatchCalls": 110,
+      "readCalls": 110,
+      "bytesRead": 1760,
+      "maxReadsInFlight": 1
+    },
+    "disabled": {
+      "sampleCalls": 100,
+      "dispatchCalls": 0,
+      "readCalls": 0,
+      "bytesRead": 0
+    },
+    "unchangedDye": {
+      "before": "1abc0e486c08f5e80a9e3e77056cfcb2aa2ba54de9dc240c9f242353074ab528",
+      "after": "1abc0e486c08f5e80a9e3e77056cfcb2aa2ba54de9dc240c9f242353074ab528"
+    },
+    "samples": [
+      {
+        "hostEncodeMs": 0.22091699999987213,
+        "endToEndMs": 0.9090419999999995
+      },
+      {
+        "hostEncodeMs": 0.21429199999988668,
+        "endToEndMs": 0.7055000000000291
+      },
+      {
+        "hostEncodeMs": 0.21516599999995378,
+        "endToEndMs": 0.8596250000000509
+      },
+      {
+        "hostEncodeMs": 0.2330419999998412,
+        "endToEndMs": 1.0152499999999236
+      },
+      {
+        "hostEncodeMs": 0.22754099999974642,
+        "endToEndMs": 0.5443749999999454
+      },
+      {
+        "hostEncodeMs": 0.2209579999998823,
+        "endToEndMs": 0.5541669999997794
+      },
+      {
+        "hostEncodeMs": 0.20554200000015044,
+        "endToEndMs": 0.7139999999999418
+      },
+      {
+        "hostEncodeMs": 0.2413329999999405,
+        "endToEndMs": 0.3995420000001104
+      },
+      {
+        "hostEncodeMs": 0.38591600000017934,
+        "endToEndMs": 1.0388750000001892
+      },
+      {
+        "hostEncodeMs": 0.33512500000006185,
+        "endToEndMs": 0.6652500000000146
+      },
+      {
+        "hostEncodeMs": 0.2108749999997599,
+        "endToEndMs": 0.6277919999997721
+      },
+      {
+        "hostEncodeMs": 0.20850000000018554,
+        "endToEndMs": 0.35295799999994415
+      },
+      {
+        "hostEncodeMs": 1.418666999999914,
+        "endToEndMs": 1.6474999999995816
+      },
+      {
+        "hostEncodeMs": 0.2102500000000873,
+        "endToEndMs": 0.3478749999999309
+      },
+      {
+        "hostEncodeMs": 0.20341700000017227,
+        "endToEndMs": 0.36379200000010314
+      },
+      {
+        "hostEncodeMs": 0.21704200000021956,
+        "endToEndMs": 0.7049999999999272
+      },
+      {
+        "hostEncodeMs": 0.21945800000003146,
+        "endToEndMs": 0.46354199999996126
+      },
+      {
+        "hostEncodeMs": 0.21758300000010422,
+        "endToEndMs": 0.774583000000348
+      },
+      {
+        "hostEncodeMs": 0.20991600000024846,
+        "endToEndMs": 0.7256660000002739
+      },
+      {
+        "hostEncodeMs": 0.4293750000001637,
+        "endToEndMs": 0.5499589999999444
+      },
+      {
+        "hostEncodeMs": 0.31524999999965075,
+        "endToEndMs": 0.8874160000000302
+      },
+      {
+        "hostEncodeMs": 0.27224999999998545,
+        "endToEndMs": 0.894666000000143
+      },
+      {
+        "hostEncodeMs": 0.6382079999998496,
+        "endToEndMs": 1.2675829999998314
+      },
+      {
+        "hostEncodeMs": 0.20720900000014808,
+        "endToEndMs": 0.7061249999997017
+      },
+      {
+        "hostEncodeMs": 0.2547079999994821,
+        "endToEndMs": 0.5577499999999418
+      },
+      {
+        "hostEncodeMs": 0.4046250000001237,
+        "endToEndMs": 0.7755420000003141
+      },
+      {
+        "hostEncodeMs": 0.44741699999940465,
+        "endToEndMs": 0.9958749999996144
+      },
+      {
+        "hostEncodeMs": 0.21379199999955745,
+        "endToEndMs": 0.6938329999993584
+      },
+      {
+        "hostEncodeMs": 0.21529199999986304,
+        "endToEndMs": 0.41970800000035524
+      },
+      {
+        "hostEncodeMs": 0.40962500000023283,
+        "endToEndMs": 0.9743330000001151
+      },
+      {
+        "hostEncodeMs": 0.2421250000006694,
+        "endToEndMs": 0.6254590000007738
+      },
+      {
+        "hostEncodeMs": 0.4102920000004815,
+        "endToEndMs": 0.6699170000001686
+      },
+      {
+        "hostEncodeMs": 0.22012499999982538,
+        "endToEndMs": 0.7260839999999007
+      },
+      {
+        "hostEncodeMs": 0.2627920000004451,
+        "endToEndMs": 0.5515000000004875
+      },
+      {
+        "hostEncodeMs": 0.2921249999999418,
+        "endToEndMs": 0.8525829999998678
+      },
+      {
+        "hostEncodeMs": 0.21083399999952235,
+        "endToEndMs": 0.7346669999997175
+      },
+      {
+        "hostEncodeMs": 0.23574999999982538,
+        "endToEndMs": 0.7629589999996824
+      },
+      {
+        "hostEncodeMs": 0.5805829999999332,
+        "endToEndMs": 0.8922499999998763
+      },
+      {
+        "hostEncodeMs": 0.22408400000040274,
+        "endToEndMs": 0.804417000000285
+      },
+      {
+        "hostEncodeMs": 0.24700000000029831,
+        "endToEndMs": 0.6065830000006827
+      },
+      {
+        "hostEncodeMs": 0.22525000000041473,
+        "endToEndMs": 0.7609160000001793
+      },
+      {
+        "hostEncodeMs": 0.21970899999996618,
+        "endToEndMs": 0.36633400000027905
+      },
+      {
+        "hostEncodeMs": 0.22012499999982538,
+        "endToEndMs": 0.7997089999998934
+      },
+      {
+        "hostEncodeMs": 0.2391250000000582,
+        "endToEndMs": 0.7846250000002328
+      },
+      {
+        "hostEncodeMs": 0.2239159999999174,
+        "endToEndMs": 0.6447499999994761
+      },
+      {
+        "hostEncodeMs": 0.2354589999995369,
+        "endToEndMs": 0.8444170000002487
+      },
+      {
+        "hostEncodeMs": 0.21291699999983393,
+        "endToEndMs": 0.7134589999996024
+      },
+      {
+        "hostEncodeMs": 0.29816699999992125,
+        "endToEndMs": 0.4845420000001468
+      },
+      {
+        "hostEncodeMs": 0.20358300000043528,
+        "endToEndMs": 0.7277500000000146
+      },
+      {
+        "hostEncodeMs": 0.22904099999959726,
+        "endToEndMs": 0.43712499999946886
+      },
+      {
+        "hostEncodeMs": 0.6299159999998665,
+        "endToEndMs": 1.0409580000005008
+      },
+      {
+        "hostEncodeMs": 0.21687500000007276,
+        "endToEndMs": 0.7400410000000193
+      },
+      {
+        "hostEncodeMs": 0.21750000000065484,
+        "endToEndMs": 0.4883330000002388
+      },
+      {
+        "hostEncodeMs": 0.21875,
+        "endToEndMs": 0.7369589999998425
+      },
+      {
+        "hostEncodeMs": 0.25095799999962765,
+        "endToEndMs": 0.39945799999986775
+      },
+      {
+        "hostEncodeMs": 0.22816700000021228,
+        "endToEndMs": 0.7891250000002401
+      },
+      {
+        "hostEncodeMs": 0.23645800000031159,
+        "endToEndMs": 0.7521249999999782
+      },
+      {
+        "hostEncodeMs": 0.21024999999917782,
+        "endToEndMs": 0.4187499999998181
+      },
+      {
+        "hostEncodeMs": 0.20783300000039162,
+        "endToEndMs": 0.7391250000000582
+      },
+      {
+        "hostEncodeMs": 0.2179999999998472,
+        "endToEndMs": 0.7437499999996362
+      },
+      {
+        "hostEncodeMs": 0.3462500000005093,
+        "endToEndMs": 0.5764160000007905
+      },
+      {
+        "hostEncodeMs": 0.21075000000018917,
+        "endToEndMs": 0.7454579999994166
+      },
+      {
+        "hostEncodeMs": 0.22624999999970896,
+        "endToEndMs": 0.7864160000008269
+      },
+      {
+        "hostEncodeMs": 0.232916999999361,
+        "endToEndMs": 0.4022079999995185
+      },
+      {
+        "hostEncodeMs": 0.23400000000037835,
+        "endToEndMs": 0.3862909999988915
+      },
+      {
+        "hostEncodeMs": 0.21141699999861885,
+        "endToEndMs": 0.709458999999697
+      },
+      {
+        "hostEncodeMs": 0.21304200000122364,
+        "endToEndMs": 0.39358400000128313
+      },
+      {
+        "hostEncodeMs": 0.6407500000004802,
+        "endToEndMs": 0.8748329999998532
+      },
+      {
+        "hostEncodeMs": 0.26525000000037835,
+        "endToEndMs": 0.8599169999997684
+      },
+      {
+        "hostEncodeMs": 0.25008299999899464,
+        "endToEndMs": 0.41837499999928696
+      },
+      {
+        "hostEncodeMs": 0.43554199999925913,
+        "endToEndMs": 0.8043330000000424
+      },
+      {
+        "hostEncodeMs": 0.21037500000056752,
+        "endToEndMs": 0.36358300000028976
+      },
+      {
+        "hostEncodeMs": 0.20874999999978172,
+        "endToEndMs": 0.8831659999996191
+      },
+      {
+        "hostEncodeMs": 0.22491699999955017,
+        "endToEndMs": 0.7539999999989959
+      },
+      {
+        "hostEncodeMs": 0.2324590000007447,
+        "endToEndMs": 0.3781250000010914
+      },
+      {
+        "hostEncodeMs": 0.21629200000097626,
+        "endToEndMs": 0.777750000001106
+      },
+      {
+        "hostEncodeMs": 0.20337500000096043,
+        "endToEndMs": 0.7242079999996349
+      },
+      {
+        "hostEncodeMs": 0.421875,
+        "endToEndMs": 0.646667000000889
+      },
+      {
+        "hostEncodeMs": 0.20349999999962165,
+        "endToEndMs": 0.7292500000003201
+      },
+      {
+        "hostEncodeMs": 0.21795899999960966,
+        "endToEndMs": 0.6269169999995938
+      },
+      {
+        "hostEncodeMs": 0.3632500000003347,
+        "endToEndMs": 0.5692920000001322
+      },
+      {
+        "hostEncodeMs": 0.19970899999862013,
+        "endToEndMs": 0.33266699999876437
+      },
+      {
+        "hostEncodeMs": 0.21883399999933317,
+        "endToEndMs": 0.761583999999857
+      },
+      {
+        "hostEncodeMs": 0.22433300000011513,
+        "endToEndMs": 0.7663750000010623
+      },
+      {
+        "hostEncodeMs": 0.2013330000008864,
+        "endToEndMs": 0.3589170000013837
+      },
+      {
+        "hostEncodeMs": 0.21941700000024866,
+        "endToEndMs": 0.555833000000348
+      },
+      {
+        "hostEncodeMs": 0.23041700000067067,
+        "endToEndMs": 0.4268339999998716
+      },
+      {
+        "hostEncodeMs": 0.451666999999361,
+        "endToEndMs": 0.7426670000004378
+      },
+      {
+        "hostEncodeMs": 0.21804100000008475,
+        "endToEndMs": 0.7405410000010306
+      },
+      {
+        "hostEncodeMs": 0.22237499999937427,
+        "endToEndMs": 0.9161669999994047
+      },
+      {
+        "hostEncodeMs": 0.2787080000016431,
+        "endToEndMs": 0.5927080000001297
+      },
+      {
+        "hostEncodeMs": 0.20962499999950523,
+        "endToEndMs": 0.734334000000672
+      },
+      {
+        "hostEncodeMs": 0.22095900000022084,
+        "endToEndMs": 0.7644170000003214
+      },
+      {
+        "hostEncodeMs": 0.22966699999960838,
+        "endToEndMs": 0.8739999999997963
+      },
+      {
+        "hostEncodeMs": 0.21479200000067067,
+        "endToEndMs": 0.3958330000004935
+      },
+      {
+        "hostEncodeMs": 0.20945799999935844,
+        "endToEndMs": 0.7764580000002752
+      },
+      {
+        "hostEncodeMs": 0.21929199999976845,
+        "endToEndMs": 0.7075839999997697
+      },
+      {
+        "hostEncodeMs": 0.22366599999986647,
+        "endToEndMs": 0.5487499999999272
+      },
+      {
+        "hostEncodeMs": 0.29054100000030303,
+        "endToEndMs": 0.565375000000131
+      },
+      {
+        "hostEncodeMs": 0.21437499999956344,
+        "endToEndMs": 0.7232920000005834
+      }
+    ]
+  },
+  "allocationSafety": [
+    {
+      "fault": "native-invalid-buffer",
+      "nativeValidation": true,
+      "hardwareMemoryExhaustion": false,
+      "error": "Buffer usages (BufferUsage::(MapRead|Storage)) is invalid. If a buffer usage contains BufferUsage::MapRead the only other allowed usage is BufferUsage::CopyDst.\n - While calling [Device].CreateBuffer([BufferDescriptor \"\"\"\"]).\n",
+      "buffersReleased": 23,
+      "candidateDispatchesBeforeRollback": 0,
+      "candidateDispatchesAfterRollback": 0,
+      "ownerHashBefore": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "ownerHashAfterRollback": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "originalBuffersParitySeededIdsPreserved": true
+    },
+    {
+      "fault": "injected-oom-result",
+      "nativeValidation": false,
+      "hardwareMemoryExhaustion": false,
+      "error": "Injected GPUOutOfMemoryError: candidate allocation failed",
+      "buffersReleased": 23,
+      "candidateDispatchesBeforeRollback": 0,
+      "candidateDispatchesAfterRollback": 0,
+      "ownerHashBefore": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "ownerHashAfterRollback": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "originalBuffersParitySeededIdsPreserved": true
+    },
+    {
+      "fault": "native-invalid-first-use-buffer",
+      "nativeValidation": true,
+      "hardwareMemoryExhaustion": false,
+      "error": "Buffer usages (BufferUsage::(MapRead|Storage)) is invalid. If a buffer usage contains BufferUsage::MapRead the only other allowed usage is BufferUsage::CopyDst.\n - While calling [Device].CreateBuffer([BufferDescriptor \"\"obstacles.world\"\"]).\n",
+      "buffersReleased": 40,
+      "candidateDispatchesBeforeRollback": 30,
+      "candidateDispatchesAfterRollback": 0,
+      "ownerHashBefore": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "ownerHashAfterRollback": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "originalBuffersParitySeededIdsPreserved": true
+    },
+    {
+      "fault": "partial-synchronous-failure",
+      "nativeValidation": false,
+      "hardwareMemoryExhaustion": false,
+      "error": "Injected synchronous allocation failure after three buffers",
+      "buffersReleased": 3,
+      "candidateDispatchesBeforeRollback": 0,
+      "candidateDispatchesAfterRollback": 0,
+      "ownerHashBefore": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "ownerHashAfterRollback": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+      "originalBuffersParitySeededIdsPreserved": true
+    }
+  ],
+  "probeFailureSafety": [
+    {
+      "fault": "native-invalid-probe-result",
+      "error": "Buffer usages (BufferUsage::(MapRead|Storage)) is invalid. If a buffer usage contains BufferUsage::MapRead the only other allowed usage is BufferUsage::CopyDst.\n - While calling [Device].CreateBuffer([BufferDescriptor \"\"\"\"]).\n",
+      "samples": 0,
+      "dispatchAfterFailure": 0,
+      "hardwareMemoryExhaustion": false
+    },
+    {
+      "fault": "native-invalid-probe-uniform",
+      "error": "Buffer usages (BufferUsage::(MapRead|Storage)) is invalid. If a buffer usage contains BufferUsage::MapRead the only other allowed usage is BufferUsage::CopyDst.\n - While calling [Device].CreateBuffer([BufferDescriptor \"\"challenge-smoke-probe.probe\"\"]).\n",
+      "samples": 0,
+      "dispatchAfterFailure": 0,
+      "hardwareMemoryExhaustion": false
+    },
+    {
+      "fault": "injected-probe-oom",
+      "error": "Injected probe GPUOutOfMemoryError",
+      "samples": 0,
+      "dispatchAfterFailure": 0,
+      "hardwareMemoryExhaustion": false
+    }
+  ],
+  "returnedPlayground": {
+    "drawCalls": 2,
+    "probeCalls": 0
+  },
+  "parked": {
+    "bytes": 5734400,
+    "before": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+    "after": "7ee36ea2ee487881ab3ee210da975cc4261bfc39f70a706dd7543c7e7fb58126",
+    "sameWorldFluidBuffersAndParity": true,
+    "resizeAndRetryPreserved": true
+  },
+  "gpuErrors": [],
+  "nativeGpuErrors": []
+}

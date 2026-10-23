@@ -1,0 +1,1 @@
+Controlled layout proof of the actual FUME SessionNotice React component and production CSS, captured through CUA at390x844 on13October2026. Exact runtime memory-failure copy is supplied as props. GPU rollback is tested separately; this is not an in-browser native GPU fault. Source a0cda91.

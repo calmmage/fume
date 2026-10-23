@@ -1,0 +1,168 @@
+{
+  "date": "2026-10-13",
+  "sourceRevision": "a0cda91",
+  "delivery": "local only; no deployment/push",
+  "checks": {
+    "focusedTests": {
+      "command": "node --test scripts/cosmos-model.test.mjs scripts/cosmos-renderer.test.mjs scripts/tool-interactions.test.mjs scripts/look-state.test.mjs scripts/room-materials.test.mjs scripts/contour-room.test.mjs scripts/material-room.test.mjs scripts/fume-hydration.test.mjs scripts/challenges.test.mjs scripts/challenge-ui.test.mjs scripts/fume-session.test.mjs scripts/smoke-probe.test.mjs scripts/renderer-session.test.mjs",
+      "exit": 0,
+      "pass": 85,
+      "fail": 0,
+      "skipped": 0
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exit": 0
+    },
+    "lint": {
+      "command": "./node_modules/.bin/eslint src/components/fume-app.tsx src/components/challenge-panel.tsx src/game/fume-game.ts src/game/renderer.ts src/game/challenges.ts src/game/session-view.ts src/game/smoke-probe.ts src/game/session-allocation.ts",
+      "exit": 0
+    },
+    "productionCompilation": {
+      "command": "node scripts/with-app-env.mjs ./node_modules/.bin/vite build",
+      "exit": 0,
+      "scope": "Client, SSR and Nitro production compilation; no database migration or deployment"
+    },
+    "preservation": {
+      "command": "node scripts/check-preserved-smoke.mjs",
+      "exit": 0,
+      "result": "18 complete original simulation files, defaults, protected sim sections, smoke shading, frame body and approved rays preserved"
+    },
+    "allocationSafety": {
+      "receipt": "validation-challenge-gpu.json",
+      "nativeValidationFaults": 2,
+      "injectedOomResult": true,
+      "partialSynchronousFailure": true,
+      "parkedBytesUnchanged": 5734400,
+      "nativeErrors": 0,
+      "libraryErrors": 0,
+      "candidateAttemptsAfterRollback": 0,
+      "hardwareMemoryExhaustion": false
+    }
+  },
+  "gpu": "validation-challenge-gpu.json",
+  "calibrations": [
+    "calibration-draft-1440.json",
+    "calibration-draft-390.json",
+    "calibration-ledge-1440.json",
+    "calibration-ledge-390.json",
+    "calibration-passage-1440.json",
+    "calibration-passage-390.json"
+  ],
+  "browser": {
+    "method": "CUA through actual local preview, normal UI actions; no hidden-state injection",
+    "viewports": [
+      [
+        1440,
+        900
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "checks": [
+      "Candle and sound-off direct entry",
+      "all three puzzle choices immediately available",
+      "fixed labels and disabled fixed controls",
+      "finite active placement and exhausted toolkit",
+      "typed fan angles via Enter and 44px angle buttons",
+      "repositioned fan preserves -37 degree aim",
+      "actual Draft, Ledge and Passage completions",
+      "free retry resets field/progress/toolkit",
+      "Choose reopens all local completion marks",
+      "two original playground candles, Hand, Geometry and mute restore",
+      "active portrait domain remains letterboxed after desktop resize",
+      "no new console warnings/errors"
+    ],
+    "rows": {
+      "height": 44,
+      "phoneWidth": 334,
+      "phoneY": [
+        681,
+        729,
+        777
+      ],
+      "desktopWidth": 334,
+      "desktopY": [
+        737,
+        785,
+        833
+      ],
+      "feedbackReservedHeight": 40
+    },
+    "controlledNoticeLayout": {
+      "capture": "img/66-recovery-notice-phone.webp",
+      "viewport": [
+        390,
+        844
+      ],
+      "notice": [
+        16,
+        76,
+        358,
+        122
+      ],
+      "dismissSize": [
+        44,
+        44
+      ],
+      "overflow": false,
+      "scope": "Actual component and production CSS with message props; not a live in-browser GPU fault"
+    },
+    "finalPositiveCheck": {
+      "sourceRevision": "a0cda91",
+      "puzzle": "Draft",
+      "viewport": [
+        1440,
+        900
+      ],
+      "actions": "Normal entry, supplied fan placement and explicit -37 degree aiming",
+      "success": "The smoke found its way; Next enabled; one fan consumed",
+      "warnings": 0,
+      "errors": 0,
+      "capture": "img/55-draft-complete-desktop.webp"
+    },
+    "journeyReport": {
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 390,
+      "horizontalOverflow": false,
+      "newSectionImages": 12,
+      "allLoaded": true
+    }
+  },
+  "independentReview": {
+    "agent": "challenge_finish_reviewer",
+    "forkedHistory": false,
+    "disposition": "ship for local review",
+    "updatedUiSessionTests": 19,
+    "record": "review-challenges.md",
+    "failureFollowupTests": 34
+  },
+  "archive": {
+    "path": "/Users/petrlavrov/calm/skills/library/dev/game-mechanics",
+    "mechanics": 269,
+    "categories": 21,
+    "sourceSha256": "fd9c22d87a24b2e7aa1aec16b38fdb80c76145e5da3ffc86fa8109d84145f99c",
+    "offlineSearchFilteringAnimations": true,
+    "freshSkillDiscovery": true,
+    "skill": "dev:game-mechanics",
+    "skillCommit": "c98e1f9"
+  },
+  "limitations": [
+    "Phone viewport and controlled touch pointer events checked; physical touch hardware not claimed",
+    "Probe overhead measured in idle headless harness, not whole-app FPS",
+    "GPU loss fault path tested; exact GPU-loss restoration is not promised",
+    "Full inherited template/auth test runner is outside this focused FUME suite"
+  ],
+  "captureRevision": "1c40483 for earlier ordinary-flow captures; a0cda91 for final desktop Draft completion and controlled recovery notice",
+  "newScreenshotProvenance": {
+    "recorded": 14,
+    "format": "WebP origin text and tool-generated prompt sidecars; embed tool uses sidecar fallback for this format",
+    "missing": 0,
+    "inheritedMissingNotChanged": 68
+  }
+}

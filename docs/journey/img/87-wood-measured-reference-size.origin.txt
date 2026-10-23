@@ -1,0 +1,1 @@
+Actual local FUME browser screenshot, 14 October 2026, source revision 9f25dd0. Viewport 664x640. Ordinary UI style selection, canvas placement and native scrolling; fresh GPU renderer after reload. Raw screenshot /private/tmp/fume-window-shots/87-wood-measured-reference-size.jpg. No generated screenshot or hidden-state injection.
